@@ -107,27 +107,27 @@ over_8 <- first_X_age %>%
 analysis = full_join(AKI_COMPASS_DATA_T1, first_X_age, by = c("ArbPersonID"))
 
 # add in unreasonable baseline result value flag
-analysis = analysis %>% mutate(FLAG_Baselineresultvalue = ifelse(BaselineResultValue > 8, TRUE, FALSE))
+analysis = analysis %>% mutate(FLAG_Baselineresultvalue = ifelse(BaselineResultValue > 8 | is.na(BaselineResultValue), TRUE, FALSE))
 
 # Step 9: Lab data analysis
 AKI_COMPASS_DATA_T4 <- tab_4_labs %>%
   filter(ArbPersonID %in% AKI_COMPASS_DATA_T1$ArbPersonID)
 AKI_COMPASS_DATA_T4 = left_join(AKI_COMPASS_DATA_T4,analysis, by=c("ArbPersonID"))
 
+# not calcing well fix after hearing form john on creatine labels to use and how to stage
 labs_cr <- AKI_COMPASS_DATA_T4 %>%
   filter(LabCompName %in% c("POCT Creatinine", "Creatinine, Serum/Plasma", "Creatinine Serum/Plasma - U")) %>%
   mutate(
     Stage1_flag = ifelse((DaysFromDOBtoCollection - AgeDays <= 2 & NumericValue - BaselineResultValue >= 0.3) |
                            (DaysFromDOBtoCollection - AgeDays <= 7 & NumericValue / BaselineResultValue >= 1.5), 1, 0),
     Stage2_flag = ifelse(NumericValue / BaselineResultValue >= 2, 1, 0),
-    Stage3_flag = ifelse(NumericValue / BaselineResultValue >= 3 | NumericValue >= 4, 1, 0),
-    Stage = case_when(
-      Stage1_flag == 1 ~ 1,
-      Stage2_flag == 1 ~ 2,
-      Stage3_flag == 1 ~ 3,
-      TRUE ~ 0
-    )
-  )
+    Stage3_flag = ifelse(NumericValue / BaselineResultValue >= 3 | NumericValue >= 4, 1, 0))
+    
+labs_cr = labs_cr %>% mutate(Stage = case_when(Stage1_flag == 1 ~ 1,
+                                               Stage2_flag == 1 ~ 2,
+                                               Stage3_flag == 1 ~ 3,
+                                               TRUE ~ 0))
+
 
 # Output frequency of stages
 stage_summary <- labs_cr %>%
@@ -136,20 +136,21 @@ stage_summary <- labs_cr %>%
 
 #tables1,2 combined into person + first encounter in "analysis" dataset
 # weirdness in payorfinancialclass variable
+# filter out age 18 and age 0
+analysis= analysis%>% filter(FLAG_kid_age == T)
 
+# sum(analysis$FLAG_Baselineresultvalue) # 3443
+# sum(is.na(analysis$BaselineResultValue)) # 3402 -- 41 values above 8
 
 ```
 
 # Questions
 
-## T1
-- What does the baseline result value signify?
-- does the FLAG_kid_age signify that subj should be included in dataset?
 ## T2
 - purpose of payorfinancialclass variable/ how to clean it up?
 ## T4
-
-- understand what is going on here to better calculate this (labs_cr)
+- stage if multiple stage flags (take highest?)
+- understand what is going on here to better calculate this (labs_cr, which serum c labels to use)
 
 
 # DESC TABLES
@@ -159,20 +160,18 @@ stage_summary <- labs_cr %>%
 #sum(analysis$FLAG_kid_age)
 # 15070 out of 18904 had a T flag for kid age (between 1 and 6570 days)
 # Variables of interest for T1
-t1 = table1(~ Sex+ race + ethnicity + DaysDOBtoEpicDeath + Death_YN, 
-       data = analysis %>% filter(FLAG_kid_age==T))
 
-# ALL Vars
+# ALL Vars t1 and t2
 t1_all = table1(~ Sex+ race + ethnicity + DaysDOBtoEpicDeath + Death_YN + AgeDays +
          Hospital + State  + AKICohortYN + CRRTCohortYN + AKILabYN + AKIDxYN + BaselineResultValue, 
-       data = analysis %>% filter(FLAG_kid_age==T))
+       data = analysis)
 
-t1
+t1_all
 
 ```
 
 SAS CODE Breakdown:
-
+t1
 - the four variables of interest for Table 1 are:
                 Sex
                 Race
@@ -182,13 +181,50 @@ SAS CODE Breakdown:
 -- similarly no diffdod or dod89 vars
 - injury description in appendix (very long)
 
+t2
 - only care about IDS in t2 that occur in t1 -- 19375 -> 18904 (matching n with tab1)
+- take first age as age at admission, flag between 0 and 6570 (<18yo)
+- look at those with baseline values; high baseline values = ~ 41, 3402 missing
+
+t4
+- 'POCT Creatinine','Creatinine, Serum/Plasma','Creatinine Serum/Plasma - U' taken from labcomp name(full list in appendix)
+- below logic used to code flags using baseline value and lab value
+  Stage1_flag = 0;
+	Stage2_flag = 0;
+	Stage3_flag = 0;
+	day = DaysFromDOBtoCollection - AgeDays ;
+	diff_scr = NumericValue - BaselineResultValue;
+	ratio_scr = NumericValue/BaselineResultValue;
+
+	IF Day <=2 Then DO;
+	   if diff_scr >=0.3 THEN Stage1_flag = 1;
+	END;
+	IF Day <=7 THen Do;
+		if ratio_scr >=1.5 THEN Stage1_flag = 1;
+	END;
+
+		if ratio_scr >=2 THEN Stage2_flag = 1;
+
+		if ratio_scr >=3 THEN Stage3_flag = 1;
+		if NumericValue>=4 THEN Stage3_flag = 1;
+
+Stage = 0;
+IF (Stage1_flag) THEN STAGE = 1;
+IF (Stage2_flag) THEN STAGE = 2;
+IF (Stage3_flag) THEN STAGE = 3;
+
+- 
 
 
 ```{r appendix}
-# injury description?
-kable(table(analysis$PrimaryDx))
+# labs
+kable(table(AKI_COMPASS_DATA_T4$LabCompName))
 
 # pay or financial class?
 kable(table(analysis$payorfinancialclass))
+
+# Primary admission description?
+kable(table(analysis$PrimaryDx))
+
+
 ```
