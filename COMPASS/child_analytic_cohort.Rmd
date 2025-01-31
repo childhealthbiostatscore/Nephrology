@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(ggplot2)
+library(table1)
 
 # Set up paths and read data
 # Adjust file paths to match your system
@@ -19,11 +20,8 @@ tab_4_labs <- read.csv("S:/Sakamoto/Nephrology/Data/Table 4 Labs.csv")
 
 QUESTIONS:
 
-TAB1PERSON:
-- code references Days_from_DOB_to_Epic_DOD (current dataset has), Days_from_DOB_to_CDPHE_DOD variables -- where is this one derived from/is it not used anymore?
-
-OVERALL -- figure out where merges happen
-
+- What does the baseline result value signify?
+- does the FLAG_kid_age signify that subj should be included in dataset?
 ```{r johns code, include=FALSE}
 # Step 1: Initial data setup
 AKI_COMPASS_DATA_T1 <- tab_1_person
@@ -32,20 +30,21 @@ AKI_COMPASS_DATA_T1 <- tab_1_person
 
 
 # Create Diff_DOD and ID_DOD_89 variables
-AKI_COMPASS_DATA_T1 <- AKI_COMPASS_DATA_T1 %>%
-  mutate(
-    Diff_DOD = abs(Days_from_DOB_to_Epic_DOD - Days_from_DOB_to_CDPHE_DOD),
-    ID_DOD_89 = ifelse(is.na(Days_from_DOB_to_Epic_DOD) & is.na(Days_from_DOB_to_CDPHE_DOD), NA,
-                  ifelse(Days_from_DOB_to_Epic_DOD == "" | Days_from_DOB_to_CDPHE_DOD == "", 1, 0))
-  )
+## THESE DONT EXIST ANYMORE IN CURRENT T1
+# AKI_COMPASS_DATA_T1 <- AKI_COMPASS_DATA_T1 %>%
+#   mutate(
+#     Diff_DOD = abs(Days_from_DOB_to_Epic_DOD - Days_from_DOB_to_CDPHE_DOD),
+#     ID_DOD_89 = ifelse(is.na(Days_from_DOB_to_Epic_DOD) & is.na(Days_from_DOB_to_CDPHE_DOD), NA,
+#                   ifelse(Days_from_DOB_to_Epic_DOD == "" | Days_from_DOB_to_CDPHE_DOD == "", 1, 0))
+#   )
 
 # Step 3: Frequency and descriptive statistics
-# Frequency table
-freq_table <- AKI_COMPASS_DATA_T1 %>%
-  summarise(across(c(Sex, Race, Ethnicity, Death_YN), ~sum(is.na(.))))
+# Frequency table for missing demographics
+freq_table_t1 <- AKI_COMPASS_DATA_T1 %>%
+  summarise(across(c(Sex, race, ethnicity, Death_YN), ~sum(is.na(.)))) # none missing 
 
 # Summary statistics for `DaysDOBtoEpicDeath`
-summary_stats <- AKI_COMPASS_DATA_T1 %>%
+summary_stats_t1 <- AKI_COMPASS_DATA_T1 %>%
   summarise(
     n = n(),
     nmiss = sum(is.na(DaysDOBtoEpicDeath)),
@@ -58,11 +57,12 @@ summary_stats <- AKI_COMPASS_DATA_T1 %>%
   )
 
 # Step 4: Filter data for large differences
-play_data_365 <- AKI_COMPASS_DATA_T1 %>%
-  filter(Diff_DOD > 365)
-
-play_data_7 <- AKI_COMPASS_DATA_T1 %>%
-  filter(Diff_DOD > 7)
+## THIS OBSOLETE WITH NO MORE CDPHE VAR TO COMPARE
+# play_data_365 <- AKI_COMPASS_DATA_T1 %>%
+#   filter(Diff_DOD > 365)
+# 
+# play_data_7 <- AKI_COMPASS_DATA_T1 %>%
+#   filter(Diff_DOD > 7)
 
 # Step 5: Subset data for analysis
 #AKI_COMPASS_DATA_T2 <- tab_2_encount
@@ -82,7 +82,7 @@ first_X_age <- first %>%
     FLAG_kid_age = ifelse(AgeDays <= 6570 & AgeDays > 0, TRUE, FALSE)
   )
 
-# Step 7: Frequency and summary statistics
+# Step 7: Frequency and summary statistics for first age
 age_flags_summary <- first_X_age %>%
   summarise(
     missing_age_flag = sum(FLAG_missing_age, na.rm = TRUE),
@@ -105,8 +105,19 @@ baseline_summary <- first_X_age %>%
 over_8 <- first_X_age %>%
   filter(BaselineResultValue > 8)
 
+### COMBINE TABS 1 AND 2 using AKICOMPASS1 and FIRSTXAGE
+
+analysis = full_join(AKI_COMPASS_DATA_T1, first_X_age, by = c("ArbPersonID"))
+
+# add in unreasonable baseline result value flag
+analysis = analysis %>% mutate(FLAG_Baselineresultvalue = ifelse(BaselineResultValue > 8, TRUE, FALSE))
+
 # Step 9: Lab data analysis
-labs_cr <- tab_4_labs %>%
+AKI_COMPASS_DATA_T4 <- tab_4_labs %>%
+  filter(ArbPersonID %in% AKI_COMPASS_DATA_T1$ArbPersonID)
+AKI_COMPASS_DATA_T4 = left_join(AKI_COMPASS_DATA_T4,analysis, by=c("ArbPersonID"))
+
+labs_cr <- AKI_COMPASS_DATA_T4 %>%
   filter(LabCompName %in% c("POCT Creatinine", "Creatinine, Serum/Plasma", "Creatinine Serum/Plasma - U")) %>%
   mutate(
     Stage1_flag = ifelse((DaysFromDOBtoCollection - AgeDays <= 2 & NumericValue - BaselineResultValue >= 0.3) |
@@ -126,5 +137,15 @@ stage_summary <- labs_cr %>%
   group_by(Stage) %>%
   summarise(count = n())
 
+```
+
+
+# DESC TABLES
+
+```{r t12}
+#tables1,2 combined into person + first encounter in "analysis" dataset
+table1(~ Sex+ race + ethnicity + DaysDOBtoEpicDeath + Death_YN + AgeDays +
+         Hospital + State + payorfinancialclass + AKICohortYN + CRRTCohortYN + AKILabYN + AKIDxYN + BaselineResultValue, 
+       data = analysis)
 
 ```
