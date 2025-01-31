@@ -9,6 +9,7 @@ output: html_document
 library(tidyverse)
 library(ggplot2)
 library(table1)
+library(knitr)
 
 # Set up paths and read data
 # Adjust file paths to match your system
@@ -133,6 +134,10 @@ stage_summary <- labs_cr %>%
   group_by(Stage) %>%
   summarise(count = n())
 
+#tables1,2 combined into person + first encounter in "analysis" dataset
+# weirdness in payorfinancialclass variable
+
+
 ```
 
 # Questions
@@ -150,10 +155,40 @@ stage_summary <- labs_cr %>%
 # DESC TABLES
 
 ```{r t12}
-#tables1,2 combined into person + first encounter in "analysis" dataset
-# weirdness in payorfinancialclass variable
-table1(~ Sex+ race + ethnicity + DaysDOBtoEpicDeath + Death_YN + AgeDays +
+
+#sum(analysis$FLAG_kid_age)
+# 15070 out of 18904 had a T flag for kid age (between 1 and 6570 days)
+# Variables of interest for T1
+t1 = table1(~ Sex+ race + ethnicity + DaysDOBtoEpicDeath + Death_YN, 
+       data = analysis %>% filter(FLAG_kid_age==T))
+
+# ALL Vars
+t1_all = table1(~ Sex+ race + ethnicity + DaysDOBtoEpicDeath + Death_YN + AgeDays +
          Hospital + State  + AKICohortYN + CRRTCohortYN + AKILabYN + AKIDxYN + BaselineResultValue, 
        data = analysis %>% filter(FLAG_kid_age==T))
 
+t1
+
+```
+
+SAS CODE Breakdown:
+
+- the four variables of interest for Table 1 are:
+                Sex
+                Race
+                Ethnicity
+                Deceased_yn
+- cdphe vs epic dod discrepancy outdated due to no more cdphe dod variable exists
+-- similarly no diffdod or dod89 vars
+- injury description in appendix (very long)
+
+- only care about IDS in t2 that occur in t1 -- 19375 -> 18904 (matching n with tab1)
+
+
+```{r appendix}
+# injury description?
+kable(table(analysis$PrimaryDx))
+
+# pay or financial class?
+kable(table(analysis$payorfinancialclass))
 ```
