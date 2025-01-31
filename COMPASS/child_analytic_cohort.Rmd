@@ -35,6 +35,7 @@ AKI_COMPASS_DATA_T1 <- tab_1_person
 #                   ifelse(Days_from_DOB_to_Epic_DOD == "" | Days_from_DOB_to_CDPHE_DOD == "", 1, 0))
 #   )
 
+
 # Step 3: Frequency and descriptive statistics
 # Frequency table for missing demographics
 freq_table_t1 <- AKI_COMPASS_DATA_T1 %>%
