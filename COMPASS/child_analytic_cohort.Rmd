@@ -18,10 +18,6 @@ tab_4_labs <- read.csv("S:/Sakamoto/Nephrology/Data/Table 4 Labs.csv")
 
 ```
 
-QUESTIONS:
-
-- What does the baseline result value signify?
-- does the FLAG_kid_age signify that subj should be included in dataset?
 ```{r johns code, include=FALSE}
 # Step 1: Initial data setup
 AKI_COMPASS_DATA_T1 <- tab_1_person
@@ -139,13 +135,25 @@ stage_summary <- labs_cr %>%
 
 ```
 
+# Questions
+
+## T1
+- What does the baseline result value signify?
+- does the FLAG_kid_age signify that subj should be included in dataset?
+## T2
+- purpose of payorfinancialclass variable/ how to clean it up?
+## T4
+
+- understand what is going on here to better calculate this (labs_cr)
+
 
 # DESC TABLES
 
 ```{r t12}
 #tables1,2 combined into person + first encounter in "analysis" dataset
+# weirdness in payorfinancialclass variable
 table1(~ Sex+ race + ethnicity + DaysDOBtoEpicDeath + Death_YN + AgeDays +
-         Hospital + State + payorfinancialclass + AKICohortYN + CRRTCohortYN + AKILabYN + AKIDxYN + BaselineResultValue, 
-       data = analysis)
+         Hospital + State  + AKICohortYN + CRRTCohortYN + AKILabYN + AKIDxYN + BaselineResultValue, 
+       data = analysis %>% filter(FLAG_kid_age==T))
 
 ```
