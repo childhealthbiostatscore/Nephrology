@@ -109,6 +109,9 @@ analysis = full_join(AKI_COMPASS_DATA_T1, first_X_age, by = c("ArbPersonID"))
 # add in unreasonable baseline result value flag
 analysis = analysis %>% mutate(FLAG_Baselineresultvalue = ifelse(BaselineResultValue > 8 | is.na(BaselineResultValue), TRUE, FALSE))
 
+# filter out age 18 and age 0
+analysis= analysis%>% filter(FLAG_kid_age == T)
+
 # Step 9: Lab data analysis
 AKI_COMPASS_DATA_T4 <- tab_4_labs %>%
   filter(ArbPersonID %in% AKI_COMPASS_DATA_T1$ArbPersonID)
@@ -136,8 +139,7 @@ stage_summary <- labs_cr %>%
 
 #tables1,2 combined into person + first encounter in "analysis" dataset
 # weirdness in payorfinancialclass variable
-# filter out age 18 and age 0
-analysis= analysis%>% filter(FLAG_kid_age == T)
+
 
 # sum(analysis$FLAG_Baselineresultvalue) # 3443
 # sum(is.na(analysis$BaselineResultValue)) # 3402 -- 41 values above 8
