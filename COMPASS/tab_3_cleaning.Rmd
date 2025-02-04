@@ -1,0 +1,84 @@
+---
+title: "table3 derivations"
+author: "Casey Sakamoto"
+date: "2025-02-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# added in 2/3/2025 code NOTE THIS IS A 3Gig file, takes a minute to lood onto machine, lambda maybe needed
+tab_3_flowsheets <- read_csv("S:/Sakamoto/Nephrology/Data/Table 3 Flowsheets Table.csv")
+```
+
+lets pull 
+Weight on admission (kg) -- will need z scores later
+
+Height on admission (cm) -- will need z scores later
+
+BMI (use CDC staging for categorical, also report as continuous)
+
+BSA (Body Surface Area)
+
+```{r table 3 setup, include = FALSE}
+#### TAB 3 FLOWSHEETS
+# note this is a particularly large file; lets try and grab what we need and filter down to reduce comp times etc
+
+# tab 3 work: 
+# VALUETYPE counts
+#    Custom List   Numeric Type Patient Height Patient Weight    String Type    Temperature 
+#        120325       13081171        3375407        7718862         167131        9350901 
+
+# FLOWSHEETROWNAME counts
+#          Blood Flow (mL/min)                    Blood Flow Rate (mL/min)                                         BMI                                         BSA 
+#                        33526                                     1758325                                     1073755                                     1904763 
+#      BSA (Calculated - sq m)                             Circuit Changed                      Circuit Changed Reason CRRT Filter (Range 100 to 250) - DO NOT USE 
+#                       805906                                         243                                         191                                       34936 
+#                    CRRT Mode                  Cumulative 24 Hour Balance                        Delta P - DO NOT USE                           Dialysate (mL/hr) 
+#                         8111                                       31401                                       33239                                       33582 
+# Dialysate Solution (PrisMax)   Effluent (Range +50 to -150) - DO NOT USE                                 Filter Type                         Filtration Fraction 
+#                        31748                                       33743                                       18635                                       34228 
+#                     FiO2 (%)                                  Heart rate                                  Heart Rate                     Heart Rate (DO NOT USE) 
+#                       287665                                         173                                       29998                                        2845 
+#                       Height                                 MAP (cmH2O)                                  MAP (mmHg)                  Old Do Not Use Stool in mL 
+#                      3375407                                       41871                                         179                                         537 
+#           Ordered Fluid Goal                       Patient Hourly Intake                                 PRBC Volume                   PRBCs Volume (Do Not Use) 
+#                        31638                                       31478                                          38                                       67103 
+#                    RAI Score                      Reason circuit changed              Replacement Solution (PrisMax)                                        Resp 
+#                         7455                                           8                                       31691                                     4598025 
+#                  Respiration                            Respiratory Rate       Return (Range 50 to 150) - DO NOT USE                                  Stool (mL) 
+#                         1725                                         419                                       34941                                       54369 
+#                         Temp   TMP (Transmembrane Pressure) - DO NOT USE                Total Ca to Ionized Ca Ratio                Transmembrane Pressure (TMP) 
+#                      9350901                                       33237                                        2728                                     1753076 
+#                   Urine (mL)                          Urine Drain Output                                      Weight                       zz MAP Old do not use 
+#                       438799                                       74790                                     7718862                                        7507 
+
+# filter out values with "do not use" in them
+tab_3_flowsheets <- tab_3_flowsheets %>% filter(!grepl("do not use", FlowSheetRowName, ignore.case = TRUE))
+
+#   Custom List   Numeric Type Patient Height Patient Weight    String Type    Temperature 
+#        120325       12968243        3375407        7718862          31971        9350901 
+
+#            Blood Flow (mL/min)       Blood Flow Rate (mL/min)                            BMI                            BSA        BSA (Calculated - sq m)                Circuit Changed 
+#                          33526                        1758325                        1073755                        1904763                         805906                            243 
+#         Circuit Changed Reason                      CRRT Mode     Cumulative 24 Hour Balance              Dialysate (mL/hr)   Dialysate Solution (PrisMax)                    Filter Type 
+#                            191                           8111                          31401                          33582                          31748                          18635 
+#            Filtration Fraction                       FiO2 (%)                     Heart rate                     Heart Rate                         Height                    MAP (cmH2O) 
+#                          34228                         287665                            173                          29998                        3375407                          41871 
+#                     MAP (mmHg)             Ordered Fluid Goal          Patient Hourly Intake                    PRBC Volume                      RAI Score         Reason circuit changed 
+#                            179                          31638                          31478                             38                           7455                              8 
+# Replacement Solution (PrisMax)                           Resp                    Respiration               Respiratory Rate                     Stool (mL)                           Temp 
+#                          31691                        4598025                           1725                            419                          54369                        9350901 
+#   Total Ca to Ionized Ca Ratio   Transmembrane Pressure (TMP)                     Urine (mL)             Urine Drain Output                         Weight 
+#                           2728                        1753076                         438799                          74790                        7718862 
+
+
+# LETS PULL weight, height, bmi, bsa and write csv so easier to clean/work with on work laptop
+# note lots of "duplicate" rows where measurements are looking to be the same, but different timevalues (ie same date same weight, two different time values)
+
+tab_3_measurements = tab_3_flowsheets  %>% filter(FlowSheetRowName %in% c("BMI", "BSA","Height","Weight"))
+tab_3_measurements_wide = tab_3_measurements %>% group_by(ArbPersonID, DaysFromDOBtoValue, FlowSheetRowName) %>% 
+  summarize(Value = mean(Value, .groups = "drop"))  %>%
+  pivot_wider(names_from = c("FlowSheetRowName"), values_from = "Value", values_fn = mean)
+
+tab_3_other = tab_3_flowsheets %>% filter(!(FlowSheetRowName %in% c("BMI", "BSA","Height","Weight")))
+```
