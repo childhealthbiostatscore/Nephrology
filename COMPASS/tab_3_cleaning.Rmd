@@ -6,6 +6,8 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+library(readr)
+library(tidyverse)
 # added in 2/3/2025 code NOTE THIS IS A 3Gig file, takes a minute to lood onto machine, lambda maybe needed
 tab_3_flowsheets <- read_csv("S:/Sakamoto/Nephrology/Data/Table 3 Flowsheets Table.csv")
 ```
@@ -73,12 +75,25 @@ tab_3_flowsheets <- tab_3_flowsheets %>% filter(!grepl("do not use", FlowSheetRo
 
 
 # LETS PULL weight, height, bmi, bsa and write csv so easier to clean/work with on work laptop
-# note lots of "duplicate" rows where measurements are looking to be the same, but different timevalues (ie same date same weight, two different time values)
+# tab_3_other = tab_3_flowsheets %>% filter(!(FlowSheetRowName %in% c("BMI", "BSA","Height","Weight")))
 
 tab_3_measurements = tab_3_flowsheets  %>% filter(FlowSheetRowName %in% c("BMI", "BSA","Height","Weight"))
+
+
+# note lots of "duplicate" rows where measurements are looking to be the same, but different timevalues (ie same date same weight, two different time values)
 tab_3_measurements_wide = tab_3_measurements %>% group_by(ArbPersonID, DaysFromDOBtoValue, FlowSheetRowName) %>% 
   summarize(Value = mean(Value, .groups = "drop"))  %>%
   pivot_wider(names_from = c("FlowSheetRowName"), values_from = "Value", values_fn = mean)
 
-tab_3_other = tab_3_flowsheets %>% filter(!(FlowSheetRowName %in% c("BMI", "BSA","Height","Weight")))
+```
+
+```{r csv write}
+### DO NOT RUN UNLESS READY
+
+# long form with bmi, ht wt, bsa
+# write_csv2(tab_3_measurements, "tab_3_ht_wt_bmi_bsa.csv")
+
+# wide form with mean taken for multiple date/times -- doesnt look like this changes any values at cursory glance of first ~ 5 values where this wouuld occur
+# write_csv2(tab_3_measurements_wide, "tab_3_meas_wide.csv")
+
 ```
