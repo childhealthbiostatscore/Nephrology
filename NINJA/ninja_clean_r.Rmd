@@ -76,6 +76,8 @@ count_exp <- function(num, name, data) {
       paste0("ntmx_day_of_3___", num), paste0("ntmx_day_of_4___", num),
       paste0("ntmx_day_of_5___", num), paste0("ntmx_day_of_6___", num),
       paste0("ntmx_day_of_7___", num))], na.rm = TRUE)
+  print(count_col)
+  print(data[[count_col]])
   return(data)
 }
 
