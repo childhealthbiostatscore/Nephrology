@@ -76,8 +76,6 @@ count_exp <- function(num, name, data) {
       paste0("ntmx_day_of_3___", num), paste0("ntmx_day_of_4___", num),
       paste0("ntmx_day_of_5___", num), paste0("ntmx_day_of_6___", num),
       paste0("ntmx_day_of_7___", num))], na.rm = TRUE)
-  print(count_col)
-  print(data[[count_col]])
   return(data)
 }
 
@@ -137,9 +135,7 @@ data_a_converted2 <- convert_to_numeric_by_prefix(data_a_converted1, "ntmx")
 # we want to apply the exposure counts and day exposures
 
 for (i in 1:length(exposure_list$ExposureNumber)){
-  print(exposure_list$ExposureName[i])
-  print(exposure_list$ExposureNumber[i])
-    data_a_converted <- count_exp(exposure_list$ExposureNumber[i], exposure_list$ExposureName[i], data_a_converted2)
+    data_a_converted2 <- count_exp(exposure_list$ExposureNumber[i], exposure_list$ExposureName[i], data_a_converted2)
 }
 
 
