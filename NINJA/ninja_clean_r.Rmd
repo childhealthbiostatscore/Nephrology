@@ -104,35 +104,39 @@ day_exp <- function(num, name, data) {
 
 ```
 
-```{r test zone}
-prefix <- "ntmx"
-
+```{r test zone, include = FALSE}
 data_a_converted1 <- convert_checked_by_prefix(data_a, "ntmx")
 # Apply the function to the data frame for columns with the prefix "ntmx"
 data_a_converted2 <- convert_to_numeric_by_prefix(data_a_converted1, "ntmx")
 # Print the converted data frame
-print(data_a_converted2)
+# print(data_a_converted2)
 
 ```
 
 
 ```{r dc}
 # Assuming the dataset is already imported and available as `redcap`
-
 # Excluding specific record IDs
 imported_dataset <- redcap[!(redcap$record_id %in% c(11, 35, 16, 17, 38, 48, 44, 58, 74, 18, 46, 70, 26)), ]
 
 # Frequency table for the variable ntmx_exposure_type (with missing values included)
 table(imported_dataset$ntmx_exposure_type, useNA = "ifany")
-
 # ntmx_exposure_type missing for 23 instead of 28 people -- was this figured out?
+
 
 # Create a new data frame, just like the 'data_a' step in SAS
 data_a <- imported_dataset
+# convert checked and unchecked into 1 and 0
+data_a_converted1 <- convert_checked_by_prefix(data_a, "ntmx")
+# Apply the function to the data frame for columns with the prefix "ntmx"
+data_a_converted2 <- convert_to_numeric_by_prefix(data_a_converted1, "ntmx")
+
 
 # we want to apply the exposure counts and day exposures
 
-for (i in length(exposure_list)){ 
+for (i in 1:length(exposure_list$ExposureNumber)){
+  print(exposure_list$ExposureName[i])
+  print(exposure_list$ExposureNumber[i])
     data_a_converted <- count_exp(exposure_list$ExposureNumber[i], exposure_list$ExposureName[i], data_a_converted2)
 }
 
