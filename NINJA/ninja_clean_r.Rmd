@@ -141,21 +141,21 @@ for (i in 1:length(exposure_list$ExposureNumber)){
 
 
 # Apply day_exp for all exposure groups
-for (name in exposure_groups) {
-  for (num in 1:65) {
-    data_a <- day_exp(num, name, data_a)
-  }
+for (i in 1:length(exposure_list$ExposureNumber)){
+data_a_converted2 <- day_exp(exposure_list$ExposureNumber[i], exposure_list$ExposureName[i], data_a_converted2)
 }
 
 # Create 'Day_01_aki' by calculating the difference between two date columns
 # Assuming 'aki_episode_start_date' and 'start_date_for_ntmx_encoun' are in Date format
-data_a$Day_01_aki <- as.numeric(difftime(data_a$aki_episode_start_date, 
-                                          data_a$start_date_for_ntmx_encoun, 
+data_a_converted2$Day_01_aki <- as.numeric(difftime(data_a_converted2$aki_episode_start_date, 
+                                          data_a_converted2$start_date_for_ntmx_encoun, 
                                           units = "days"))
 
-# The dataset `data_a` now includes the new variables from the count_exp and day_exp functions,
+# The dataset `data_a_converted2` now includes the new variables from the count_exp and day_exp functions,
 # along with the Day_01_aki variable representing the number of days between the two dates.
 
+
+### LEFT OFF AT LINE 243 PROC FREQ data=play;   table Day_01_aki; RUN; in chronology of exposure with aki program listed above
 
 
 ```
