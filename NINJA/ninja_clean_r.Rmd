@@ -11,6 +11,8 @@ output: html_document
 
 ```{r setup, include = FALSE}
 library(readr)
+library(tidyverse)
+library(tableone)
 # import redcap data set derived in above nested program 
 redcap <- read_csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/redcap.csv")
 
@@ -159,3 +161,7 @@ data_a_converted2$Day_01_aki <- as.numeric(difftime(data_a_converted2$aki_episod
 
 
 ```
+
+
+
+

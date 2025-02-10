@@ -1,0 +1,84 @@
+---
+title: "NINJA_reports_20250211"
+author: "Casey Sakamoto"
+date: "2025-02-10"
+output: html_document
+---
+# Objectives
+- create a AKI report for ninja, using data_d derived in prog 00010
+- then create a report with the AKI and addl comments
+- make sure death var is fixed
+
+```{r dc, include = FALSE}
+library(tidyverse)
+library(knitr)
+library(tableone)
+
+# upload data d
+data_d <- read_csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
+
+
+##################################################################################################################################
+# report of recordid, aki date, aki stage, highest stage, highest date, whether the dates/stages differ
+# data_d_report = data_d %>% select(record_id, contains("aki"), contains("AKI"),time_flag_to_peak, time_flag_to_AKI, date_of_maximum_scr_during, start_date_for_ntmx_encoun)
+
+# note there are 3 subj who had time_flag_to_peak missing, in code, john looked at date of max sccr_during and start date of ntmx encounter -- use these?
+data_d_report = data_d %>% select(record_id, aki_episode_start_date,aki_episode_resolution_dat, initial_aki_stage,
+                                  highest_aki_stage_for_this, time_flag_to_AKI,time_flag_to_peak,
+                                  date_of_maximum_scr_during, start_date_for_ntmx_encoun)
+
+# since initial aki is in form Stage 1 Stage 2 Stage 3 
+# and highest is: 
+# Stage 1 (0.3 increase in Daily Scr  or Daily Scr 1.5 - 1.9 times baseline),
+# Stage 2 (Daily Scr 2 - 2.9 times baseline)
+# Stage 3 (Daily Scr >= 3 times baseline or provision of dialysis for an AKI related reason) 
+
+# we will just see if the string from initial is in the highest
+data_d_report$FLAG_Stage <- !mapply(function(a, b) grepl(a, b, fixed = TRUE), data_d_report$initial_aki_stage, data_d_report$highest_aki_stage_for_this)
+
+# there are 3 subj: 67, 79, 83 who are missing the time to highest and date of max scr; these subj will be flagged in addition to the subj where the dates do not match
+data_d_report$FLAG_Dates = !ifelse(is.na(data_d_report$time_flag_to_peak), FALSE, data_d_report$time_flag_to_peak == data_d_report$time_flag_to_AKI)
+
+data_d_report = data_d_report %>% select(record_id, time_flag_to_AKI, time_flag_to_peak, initial_aki_stage, highest_aki_stage_for_this, FLAG_Stage, FLAG_Dates)
+##################################################################################################################################
+data_d_ranges = data_d %>% select(record_id, additional_comments, supratherapeutic_vancomyci, gentamicin_trough_2, tacrolimus_level_15, cyclosporine_level_300)
+
+
+
+
+
+##################################################################################################################################
+```
+
+## Report
+
+- Of 72 Subjects, 11 (15%) had different stages for initial vs peak AKI, while 33* (46%*) had different dates for initial vs peak AKI
+
+-- *3 Subjects (67,79,83) missing the date of highest SCR, 2 had a highest scr though (rec id 83 missing a highest scr as well)
+
+- For stage flags, all subj except 1 also had a flag for different dates -> 10 subj total with both diff stage and dates
+
+- supertherapeutic ranges? additional comments seems to not be where these ranges are hidden. showing the dichotomous vars until then.
+
+- death variable seems to be fixed, with 'yes' responses closer to what we'd expect
+
+```{r report}
+# report of aki differences
+# all subj
+sum(data_d_report$FLAG_Stage); sum(data_d_report$FLAG_Dates)
+
+# looking at stages flags
+kable(data_d_report %>% filter(FLAG_Stage ==1))
+
+# looking at dates flags
+kable(data_d_report %>% filter(FLAG_Dates ==1))
+
+# additional comments variable seems not what we are looking for with the supratherapeutic ranges
+kable(table(data_d$additional_comments))
+
+# lets look at the supratherapeutic variables in the data dictionary to see if this is enlightening at all
+CreateTableOne(data = data_d_ranges %>% select(-record_id), includeNA  = T)
+
+# confirm death variable fixed
+table(data_d$death)
+```
