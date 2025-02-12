@@ -7,12 +7,13 @@ output:
     toc: true
     toc_float: true
     toc_depth: 2
-    number_sections: true
+    number_sections: false
 ---
 # Objectives
-- Settle on primary var for AKI Timing/Stage
-- Confirm data quality: make sure death var is fixed
-- Look into Supratherapeutic Ranges?
+- Compare timing and stages of initial AKI and highest AKI
+  - Determine which variables to use for timing and staging
+- Verify death rate variable is fixed and new death rate makes sense
+- Read in variables containing information about supratherapeutic measures and summarize ranges
 
 ```{r dc, include = FALSE}
 library(tidyverse)
@@ -21,7 +22,7 @@ library(haven)
 # upload data d
 data_d <- read_csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
 
-
+data_d$death = factor(data_d$death, labels = c("No", "Yes"))
 ##################################################################################################################################
 # report of recordid, aki date, aki stage, highest stage, highest date, whether the dates/stages differ
 # data_d_report = data_d %>% select(record_id, contains("aki"), contains("AKI"),time_flag_to_peak, time_flag_to_AKI, date_of_maximum_scr_during, start_date_for_ntmx_encoun)
@@ -92,62 +93,52 @@ ranget1 = table1(~.,data=data_d_ranges %>% select(-record_id, -additional_commen
 
 # Report
 
-## Subj with Different Stage/Dates initial vs Peak
+## Subjects with Different Stage/Dates of Initial AKI vs Peak AKI
 
-The distribution for highest aki has fewer stage 1 AKI and more stage 2/3 AKI than the distribution for initial AKI
+Of 72 total subjects, 33 subjects had a different date for Initial AKI and Highest AKI. 10 subjects had both a different date and a different stage, while 1 subject had only a different stage.
+
+The Record IDs, Days from flag to the initial AKI, Days from flag to highest AKI, initial and highest AKI stages, and flags for different stages/peaks (True = different stage/peak) are displayed below for subjects with different stages/dates for their initial and highest AKI. 
+
+- Table 1: Subjects With Stage Flags list the 11 individuals with different values for initial AKI and highest AKI. 
+
+- Table 2: Subjects With Date Flags lists all individuals with day of AKI differences between initial AKI and highest AKI.
+  - Note Record_ID 20 does not appear in this table as both stage and day differed for this individual.
+
 ```{r, echo=FALSE}
-# initial
-kable(table(data_d_report$initial_aki_stage),col.names = c("",""))
-# peak
-kable(table(data_d_report$highest_aki_stage_for_this),col.names = c("",""))
-```
-
-- Of 72 Subjects, 11 (15%) had different stages for initial vs peak AKI, while 33* (46%*) had different dates for initial vs peak AKI.
-
-  -- *3 Subjects (rid's:67,79,83) missing the date of highest SCR (rid 83 also missing a highest scr as well).
-
-- For stage flags, all subj except 1 also had a flag for different dates 
-  -- 10 subj total with both diff stage and dates 
-
-
-```{r}
-# report of aki differences
-# total subj with different Stages
-sum(data_d_report$FLAG_Stage)
-# total subj with different dates
-sum(data_d_report$FLAG_Dates)
-
 # looking at stages flags
-kable(data_d_report %>% filter(FLAG_Stage ==1),col.names = labels_vector)
+kable(data_d_report %>% filter(FLAG_Stage ==1),col.names = labels_vector, caption = "T1: Subjects With Stage Flags")
 
 # looking at dates flags
-kable(data_d_report %>% filter(FLAG_Dates ==1),col.names = labels_vector)
+kable(data_d_report %>% filter(FLAG_Dates ==1),col.names = labels_vector, caption = "T2: Subjects With Date Flags")
 ```
 
-## Death Variable fix confirm
+### Question for Dr. Stenson: Which variable should we use to summarize AKI date and AKI stage, Initial or Highest AKI?
 
-At standing meeting it was mentioned in the Table1 the death variable factoring was likely switched. Confirming the rate is more in line of what we would expect now after recoding
+## Death Variable Fix Confirm
 
-- The proportion is now 13/72 = 18%
+At standing meeting it was mentioned in the Table1 the death variable factoring was likely switched.
+John changed the factoring in the analysis dataset, and the mortality rate is now 13/72 = 18%
 
-```{r}
+### Question for Dr. Stenson: Does this new rate seem reasonable?
+
+```{r, echo=FALSE}
 # confirm death variable fixed
-table(data_d$death)
+kable(table(data_d$death), col.names = c("Death Y/N", "Freq"))
 ```
 
 ## Supratherapeutic Ranges
 
-At meeting it was mentioned that supratherapeutic ranges were of interest, and to investigate the different ranges within the "additional_comments" variable
+In order to examine supratherapeutic drug levels, we were told to examine the "additional_comments" variable. This variable doesn't seem to contain supratherapeutic ranges, with a summary table listed below.
 
-- additional_comments doesn't look like ranges. Looking through the dataset I am only seeing a few dichotomous variables with what looks like supratherapeutic values. 
+### Question for Dr. Stenson: Where is this information stored in the dataset?
+
 ```{r, echo=FALSE}
 # not what we are looking for with the supratherapeutic ranges?
 kable(table(data_d$additional_comments),col.names = c("Additional Comments", "Freq"))
 ```
 
-- below is a summary of the supratherapeutic variables i found in the dataset.
 
-```{r, echo=FALSE}
+```{r, include=FALSE}
 # look at the supratherapeutic variables from the data dictionary
 ranget1
 ```
