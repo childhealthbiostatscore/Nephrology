@@ -2,18 +2,22 @@
 title: "NINJA_reports_20250211"
 author: "Casey Sakamoto"
 date: "2025-02-10"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    number_sections: true
 ---
 # Objectives
-- create a AKI report for ninja, using data_d derived in prog 00010
-- then create a report with the AKI and addl comments
-- make sure death var is fixed
+- Settle on primary var for AKI Timing/Stage
+- Confirm data quality: make sure death var is fixed
+- Look into Supratherapeutic Ranges?
 
 ```{r dc, include = FALSE}
 library(tidyverse)
 library(knitr)
-library(tableone)
-
+library(haven)
 # upload data d
 data_d <- read_csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
 
@@ -39,46 +43,111 @@ data_d_report$FLAG_Stage <- !mapply(function(a, b) grepl(a, b, fixed = TRUE), da
 # there are 3 subj: 67, 79, 83 who are missing the time to highest and date of max scr; these subj will be flagged in addition to the subj where the dates do not match
 data_d_report$FLAG_Dates = !ifelse(is.na(data_d_report$time_flag_to_peak), FALSE, data_d_report$time_flag_to_peak == data_d_report$time_flag_to_AKI)
 
+# select vars
 data_d_report = data_d_report %>% select(record_id, time_flag_to_AKI, time_flag_to_peak, initial_aki_stage, highest_aki_stage_for_this, FLAG_Stage, FLAG_Dates)
+
+# Add labels to the variables
+labels_vector <- c(
+  "Record ID",
+  "Days from Flag to AKI",
+  "Days from Flag to Peak",
+  "Initial AKI Stage",
+  "Peak AKI Stage",
+  "Different Initial/Peak AKI Stage",
+  "Different Initial/Peak Dates"
+)
+
+names(labels_vector) <- names(data_d_report)
+for (i in seq_along(data_d_report)) {
+  attr(data_d_report[[i]], "label") <- labels_vector[i]
+}
+
+data_d_report <- labelled::set_variable_labels(
+  data_d_report,
+  record_id = "Record ID",
+  time_flag_to_AKI = "Days from Flag to AKI",
+  time_flag_to_peak = "Days from Flag to Peak",
+  initial_aki_stage = "Initial AKI Stage",
+  highest_aki_stage_for_this = "Peak AKI Stage",
+  FLAG_Stage = "Different Initial/Peak AKI Stage",
+  FLAG_Dates = "Different Initial/Peak Dates"
+)
+
+
+
 ##################################################################################################################################
 data_d_ranges = data_d %>% select(record_id, additional_comments, supratherapeutic_vancomyci, gentamicin_trough_2, tacrolimus_level_15, cyclosporine_level_300)
+labels_vector2 = c("Record ID","Additional Comments", "Vancomycin > 15", "Gentamicin Trough > 2", "Tacromilus Level > 15", "Cyclosporine Level > 300")
 
 
+names(labels_vector2) <- names(data_d_ranges)
+for (i in seq_along(data_d_ranges)) {
+  attr(data_d_ranges[[i]], "label") <- labels_vector2[i]
+}
 
-
-
+library(table1)
+ranget1 = table1(~.,data=data_d_ranges %>% select(-record_id, -additional_comments))
 ##################################################################################################################################
 ```
 
-## Report
+# Report
 
-- Of 72 Subjects, 11 (15%) had different stages for initial vs peak AKI, while 33* (46%*) had different dates for initial vs peak AKI
+## Subj with Different Stage/Dates initial vs Peak
 
--- *3 Subjects (67,79,83) missing the date of highest SCR, 2 had a highest scr though (rec id 83 missing a highest scr as well)
+The distribution for highest aki has fewer stage 1 AKI and more stage 2/3 AKI than the distribution for initial AKI
+```{r, echo=FALSE}
+# initial
+kable(table(data_d_report$initial_aki_stage),col.names = c("",""))
+# peak
+kable(table(data_d_report$highest_aki_stage_for_this),col.names = c("",""))
+```
 
-- For stage flags, all subj except 1 also had a flag for different dates -> 10 subj total with both diff stage and dates
+- Of 72 Subjects, 11 (15%) had different stages for initial vs peak AKI, while 33* (46%*) had different dates for initial vs peak AKI.
 
-- supertherapeutic ranges? additional comments seems to not be where these ranges are hidden. showing the dichotomous vars until then.
+  -- *3 Subjects (rid's:67,79,83) missing the date of highest SCR (rid 83 also missing a highest scr as well).
 
-- death variable seems to be fixed, with 'yes' responses closer to what we'd expect
+- For stage flags, all subj except 1 also had a flag for different dates 
+  -- 10 subj total with both diff stage and dates 
 
-```{r report}
+
+```{r}
 # report of aki differences
-# all subj
-sum(data_d_report$FLAG_Stage); sum(data_d_report$FLAG_Dates)
+# total subj with different Stages
+sum(data_d_report$FLAG_Stage)
+# total subj with different dates
+sum(data_d_report$FLAG_Dates)
 
 # looking at stages flags
-kable(data_d_report %>% filter(FLAG_Stage ==1))
+kable(data_d_report %>% filter(FLAG_Stage ==1),col.names = labels_vector)
 
 # looking at dates flags
-kable(data_d_report %>% filter(FLAG_Dates ==1))
+kable(data_d_report %>% filter(FLAG_Dates ==1),col.names = labels_vector)
+```
 
-# additional comments variable seems not what we are looking for with the supratherapeutic ranges
-kable(table(data_d$additional_comments))
+## Death Variable fix confirm
 
-# lets look at the supratherapeutic variables in the data dictionary to see if this is enlightening at all
-CreateTableOne(data = data_d_ranges %>% select(-record_id), includeNA  = T)
+At standing meeting it was mentioned in the Table1 the death variable factoring was likely switched. Confirming the rate is more in line of what we would expect now after recoding
 
+- The proportion is now 13/72 = 18%
+
+```{r}
 # confirm death variable fixed
 table(data_d$death)
+```
+
+## Supratherapeutic Ranges
+
+At meeting it was mentioned that supratherapeutic ranges were of interest, and to investigate the different ranges within the "additional_comments" variable
+
+- additional_comments doesn't look like ranges. Looking through the dataset I am only seeing a few dichotomous variables with what looks like supratherapeutic values. 
+```{r, echo=FALSE}
+# not what we are looking for with the supratherapeutic ranges?
+kable(table(data_d$additional_comments),col.names = c("Additional Comments", "Freq"))
+```
+
+- below is a summary of the supratherapeutic variables i found in the dataset.
+
+```{r, echo=FALSE}
+# look at the supratherapeutic variables from the data dictionary
+ranget1
 ```
