@@ -276,7 +276,6 @@ Height on admission (cm)	?	Table 3 Flow Sheet
 Height for age z score 		NA - need age in months  Derived Table 3
 BMI (use CDC staging for categorical, also report as continuous		NA - need age in months  Derived Table 3
 BSA (Body Surface Area)	?	Table 3 Flow Sheet
-ECMO (yes)	?	Table 3? (Daniell emailed asking for this 4.7.2022)
 
 
 ## VARS TO CONFIRM QUESTIONS
@@ -286,6 +285,8 @@ Financial Class	FinancialClass	Table 2 Encounters
 Nephrology consult	?	Table 7
 
 ## VARS TO FIND/DERIVE
+
+ECMO (yes)	?	Table 3? (Daniell emailed asking for this 4.7.2022) - not listed in flowsheet - to derive?
 
 Nephrotoxin	?	Table 5? - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7393580/ - use this to identify exposure to neptox. exposures during hosp
 
@@ -390,6 +391,12 @@ kable(table(AKI_COMPASS_DATA_T4$LabCompName))
 kable(table(analysis$payorfinancialclass))
 
 # Primary admission description?
+# Dx1 = as.data.frame(table(analysis$PrimaryDx))
+# spit out top 10-20 or so and ask Erin about later
+
+# 523 have frequency of 5 or greater. 
+# Dx1_g5 = Dx1 %>% filter(Freq >4)
+
 kable(table(analysis$PrimaryDx))
 ```
 

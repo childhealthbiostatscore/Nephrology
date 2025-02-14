@@ -94,7 +94,7 @@ tab_3_measurements_wide = tab_3_measurements %>% group_by(ArbPersonID, DaysFromD
 # long form with bmi, ht wt, bsa
 # write_csv2(tab_3_measurements, "tab_3_ht_wt_bmi_bsa.csv")
 
-# wide form with mean taken for multiple date/times -- doesnt look like this changes any values at cursory glance of first ~ 5 values where this wouuld occur
+# wide form with mean taken for multiple date/times -- doesnt look like this changes any values at cursory glance of first ~ 5 values where this would occur
 write_csv2(tab_3_measurements_wide, "tab_3_meas_wide.csv")
 
 ```
