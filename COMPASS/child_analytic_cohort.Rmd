@@ -312,7 +312,7 @@ ECMO (yes)	?	Table 3? (Daniell emailed asking for this 4.7.2022)
 
 ## VARS TO CONFIRM QUESTIONS
 
-Primary admission dx (will need to categorize) 	PrimaryAdmissionDiagnosis	Table 2 Encounters
+Primary admission dx (will need to categorize) PrimaryAdmissionDiagnosis	Table 2 Encounters
 Financial Class	FinancialClass	Table 2 Encounters
 Nephrology consult	?	Table 7
 
