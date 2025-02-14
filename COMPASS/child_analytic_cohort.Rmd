@@ -16,6 +16,9 @@ library(knitr)
 tab_1_person <- read.csv("S:/Sakamoto/Nephrology/Data/Table1 Person Table.csv")
 tab_2_encount <- read.csv("S:/Sakamoto/Nephrology/Data/Table2 Encounter Table.csv")
 tab_4_labs <- read.csv("S:/Sakamoto/Nephrology/Data/Table 4 Labs.csv")
+tab_7_proc <- read.csv("S:/Sakamoto/Nephrology/Data/Table 7 Procedures Table.csv")
+tab_8_adt <- read.csv("S:/Sakamoto/Nephrology/Data/Table 8 ADT Table.csv")
+
 ```
 
 ```{r johns code, include=FALSE}
@@ -102,12 +105,15 @@ baseline_summary <- first_X_age %>%
 over_8 <- first_X_age %>%
   filter(BaselineResultValue > 8)
 
+
 ### COMBINE TABS 1 AND 2 using AKICOMPASS1 and FIRSTXAGE
 
 analysis = full_join(AKI_COMPASS_DATA_T1, first_X_age, by = c("ArbPersonID"))
 
 # add in unreasonable baseline result value flag
 analysis = analysis %>% mutate(FLAG_Baselineresultvalue = ifelse(BaselineResultValue > 8 | is.na(BaselineResultValue), TRUE, FALSE))
+# sum(analysis$FLAG_Baselineresultvalue) # 3443
+# sum(is.na(analysis$BaselineResultValue)) # 3402 -- 41 values above 8
 
 # filter out age 18 and age 0
 analysis= analysis%>% filter(FLAG_kid_age == T)
@@ -138,27 +144,59 @@ stage_summary <- labs_cr %>%
   summarise(count = n())
 
 #tables1,2 combined into person + first encounter in "analysis" dataset
-# weirdness in payorfinancialclass variable
+####
+# COMBINE ANALYSIS AND TABLE 4 HERE
+####
 
+# Step 10: Table 7, Nephrology consult
 
-# sum(analysis$FLAG_Baselineresultvalue) # 3443
-# sum(is.na(analysis$BaselineResultValue)) # 3402 -- 41 values above 8
+# may need to confirm date happens during admission
+tab_7_consult = tab_7_proc %>% filter(ProcedureName == "CONSULT INPT NEPHROLOGY")
+analysis2 = left_join(analysis, tab_7_consult)
 
+analysis2 %>% summarise(sum(!is.na(ProcedureName)))
+```
+
+```{r tab 2 7 workspace, include = FALSE}
+# tab2 cleaning
+
+## primary admission dx derivation
+
+# examine what we are looking at
+# 2944 different categories with 
+Dx1 = as.data.frame(table(analysis$PrimaryDx))
+# 523 have frequency of 5 or greater. 
+# Dx1_g5 = Dx1 %>% filter(Freq >4)
+
+# it looks like a lot of these categories can maybe be compressed using grepl or some sort of string matching function
+
+## financial class
+
+FC1 = as.data.frame(table(analysis$payorfinancialclass))
+# this one seems more easy to clean up with a grepl string match -- confirm that this is ok with john
+
+# tab 7 cleaning: 
+# look for neph consult in procedures
+consult_df = as.data.frame(table(tab_7_proc$ProcedureName))
+# looks pretty clear cut -- only one category for neph consult -- double check with John that this makes sense
 ```
 
 # Questions
 
-## T2
-- purpose of payorfinancialclass variable/ how to clean it up?
-## T4
-- stage if multiple stage flags (take highest?)
-- understand what is going on here to better calculate this (labs_cr, which serum c labels to use)
+## T1
 
+- it seems like mortality after discharge/during admission can be derived, but would need the admission/discharge window dates
+
+## T2
+- how to clean up t2 primary initial diagnosis PrimaryDx
+- how to clean up financial class 
+
+## T7 
+- confirm consult is the only category in procedures table, right now we have 24 consults, 13 of which are in our analysis data
 
 # DESC TABLES
 
 ```{r t12}
-
 #sum(analysis$FLAG_kid_age)
 # 15070 out of 18904 had a T flag for kid age (between 1 and 6570 days)
 # Variables of interest for T1
@@ -229,53 +267,73 @@ kable(table(analysis$payorfinancialclass))
 kable(table(analysis$PrimaryDx))
 ```
 
-Vars:
+Vars: 
+Label name	Var name	location
 
-Age at admission
-Sex (male)
-Weight on admission (kg)
-Wt for age z score
-Height on admission (cm)
-Height for age z score 
-BMI (use CDC staging for categorical, also report as continuous
-BSA (Body Surface Area)
-Race
-Ethnicity
-Primary admission dx (will need to categorize)
-Financial Class
-Zip Code
-Urban vs suburban
-In state (yes)
-Distance from CHCO
-<20 miles
-20-50 miles
-50-80 miles
-80-100
->100
-Nephrology consult
-ECMO (yes)
-Nephrotoxin
- Number
-1
-2
-3
->3
-Community acquired AKI, yes
-Time from admission to AKI in those with hospital acquired AKI (? Days or hours)
-Prior history of KDIGO AKI 
-Stage 1
-Stage 2
-Stage 3
-Died (yes) 
-During admission
-Mortality after discharge
-30 day
-90 day
-1 year
-2 year
-5 year
-10 year
+## DERIVED/READY TO PUT IN TABLE AS IS
 
-Cohort
-Cohort1: Any UCHealth (any campus) patient who receivedCRRTwhile being admitted to the hospital anytime
-Cohort2: Any UCHealth patient withAKIduring hospitalization anytime
+Age at admission	AgeAtTimeOfAdmission	Table 2 Encounters -----------
+Sex (male)	Sex	Table 1 Person -----------
+Race	Race	Table 1 Person -----------
+Ethnicity	Ethnicity	Table 1 Person -----------
+In state (yes)	In_state_yn	Table 2 Encounters -----------
+Died (yes) 	Death_YN	Table 1 ------------
+
+
+## WAITING ON EMAIL FROM DONIA (UPDATED DATA) AND GUIDANCE ON WHICH WEIGHT/HEIGH TO USE (SEE TAB_3_CLEANING PROGRAM)
+
+Weight on admission (kg)	?	Table 3 Flow Sheet 
+Wt for age z score		NA - need age in months  Derived Table 3
+Height on admission (cm)	?	Table 3 Flow Sheet
+Height for age z score 		NA - need age in months  Derived Table 3
+BMI (use CDC staging for categorical, also report as continuous		NA - need age in months  Derived Table 3
+BSA (Body Surface Area)	?	Table 3 Flow Sheet
+ECMO (yes)	?	Table 3? (Daniell emailed asking for this 4.7.2022)
+
+
+## VARS TO CONFIRM QUESTIONS
+
+Primary admission dx (will need to categorize) 	PrimaryAdmissionDiagnosis	Table 2 Encounters
+Financial Class	FinancialClass	Table 2 Encounters
+Nephrology consult	?	Table 7
+
+## VARS TO FIND
+
+Nephrotoxin	?	Table 5? - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7393580/ - use this to identify exposure to neptox. exposures during hosp
+Number		
+  1		
+  2		
+  3		
+  .>3	
+  
+Community acquired AKI, yes		? -- look at lab scr 180 days before admission, during admission and discharge
+Time from admission to AKI in those with hospital acquired AKI (? Days or hours)		?
+Prior history of KDIGO AKI 	?	?
+Stage 1		
+Stage 2		
+Stage 3		
+
+Died During admission		?
+Mortality after discharge		? - questions about what date variable to use -- no more cdphe data included(?) in previous data
+  30 day		
+  90 day		
+  1 year		
+  2 year		
+  5 year		
+  10 year
+
+
+## NO LONGER EXIST IN CURRENT DATASET
+
+Zip Code	Zip_code_3_digits	Table 2 Encounters
+Urban vs suburban		Table 2 Encounters
+Distance from CHCO	distance_from_hospital	Table 2 Encounters
+  <20 miles		
+  20-50 miles		
+  50-80 miles		
+  80-100		
+, >100
+
+
+
+
