@@ -157,19 +157,50 @@ analysis = left_join(analysis, tab_7_consult)
 # analysis %>% summarise(sum(!is.na(ProcedureName)))
 
 # Step 11: Table 8: Admission, discharge dates etc
-tab8_towide = tab_8_adt %>% select(ArbPersonID, ArbEncounterID, EventType, DaysFromDOBtoEventdate) %>% filter(EventType %in% c("Admission", "Discharge"))
-tab8_wide <- tab8_towide %>% 
+# lot of duplicate transfer in/out, lets just look at discharge/admission for now
+
+# create admission and discharge col to easy compare
+tab8_adm = tab_8_adt %>% select(ArbPersonID, ArbEncounterID, EventType, DaysFromDOBtoEventdate) %>% filter(EventType %in% c("Admission"))
+tab8_dis = tab_8_adt %>% select(ArbPersonID, ArbEncounterID, EventType, DaysFromDOBtoEventdate) %>% filter(EventType %in% c("Discharge"))
+
+tab8_adm_w <- tab8_adm %>% 
   pivot_wider(
     names_from = EventType, 
     values_from = DaysFromDOBtoEventdate,
-    values_fn = mean
+    values_fn = min
   ) %>%
   mutate(across(where(is.character), ~ na_if(., "NULL"))) %>%
   mutate(across(where(is.character), as.numeric))
 
-analysis = left_join(analysis, tab8_wide)
-sum(is.na(analysis$Admission))
-sum(is.na(analysis$Discharge))
+tab8_dis_w <- tab8_dis %>% 
+  pivot_wider(
+    names_from = EventType, 
+    values_from = DaysFromDOBtoEventdate,
+    values_fn = max
+  ) %>%
+  mutate(across(where(is.character), ~ na_if(., "NULL"))) %>%
+  mutate(across(where(is.character), as.numeric))
+
+
+# add in to analysis dataset
+analysis = left_join(analysis, tab8_adm_w)
+analysis = left_join(analysis, tab8_dis_w)
+
+rm(tab8_adm, tab8_adm_w, tab8_dis, tab8_dis_w)
+# number of missing admissions/discharge
+# sum(is.na(analysis$Admission));sum(is.na(analysis$Discharge))
+# create a flag for death at admission n = 16
+analysis$FLAG_died_admission <- analysis$Admission == analysis$DaysDOBtoEpicDeath
+# sum(analysis$FLAG_died_admission, na.rm = T) 
+
+analysis$death_discharge_days_diff <- analysis$DaysDOBtoEpicDeath - analysis$Discharge
+
+# Categorize the difference
+analysis$mortality_after_discharge <- cut(analysis$death_discharge_days_diff,
+                                          breaks = c(-Inf,0 , 30, 90, 365, 730, 1825, 3650, Inf),
+                                          labels = c("Before Discharge","<30 days", "30-90 days", "90 days-1 year", "1-2 years", "2-5 years", "5-10 years", ">10 years"),
+                                          right = FALSE)
+
 
 ```
 
@@ -201,7 +232,7 @@ consult_df = as.data.frame(table(tab_7_proc$ProcedureName))
 
 ## T1
 
-- it seems like mortality after discharge/during admission can be derived, but would need the admission/discharge window dates
+- it seems like mortality after discharge/during admission can be derived, but would need the admission/discharge window dates -- see t8 question
 
 ## T2
 - how to clean up t2 primary initial diagnosis PrimaryDx
@@ -220,15 +251,24 @@ Label name	Var name	location
 
 ## DERIVED/READY TO PUT IN TABLE AS IS
 
-Age at admission	AgeAtTimeOfAdmission	Table 2 Encounters -----------
-Sex (male)	Sex	Table 1 Person -----------
-Race	Race	Table 1 Person -----------
-Ethnicity	Ethnicity	Table 1 Person -----------
-In state (yes)	In_state_yn	Table 2 Encounters -----------
-Died (yes) 	Death_YN	Table 1 ------------
+Age at admission	
+Sex (male)	
+Race	Race	
+Ethnicity	
+In state (yes)	
+Died (yes) 	
 
+Died During admission	- derived as FLAG_died_admissions
 
-## WAITING ON EMAIL FROM DONIA (UPDATED DATA) AND GUIDANCE ON WHICH WEIGHT/HEIGH TO USE (SEE TAB_3_CLEANING PROGRAM)
+Mortality after discharge	- now using epic DOD as only var we have now -- derived as 
+  30 day		
+  90 day		
+  1 year		
+  2 year		
+  5 year		
+  10 year
+  
+## WAITING ON EMAIL FROM DONIA (UPDATED DATA) AND GUIDANCE ON WHICH WEIGHT/HEIGHT TO USE (SEE TAB_3_CLEANING PROGRAM)
 
 Weight on admission (kg)	?	Table 3 Flow Sheet 
 Wt for age z score		NA - need age in months  Derived Table 3
@@ -245,9 +285,10 @@ Primary admission dx (will need to categorize) PrimaryAdmissionDiagnosis	Table 2
 Financial Class	FinancialClass	Table 2 Encounters
 Nephrology consult	?	Table 7
 
-## VARS TO FIND
+## VARS TO FIND/DERIVE
 
 Nephrotoxin	?	Table 5? - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7393580/ - use this to identify exposure to neptox. exposures during hosp
+
 Number		
   1		
   2		
@@ -261,14 +302,7 @@ Stage 1
 Stage 2		
 Stage 3		
 
-Died During admission		?
-Mortality after discharge		? - questions about what date variable to use -- no more cdphe data included(?) in previous data
-  30 day		
-  90 day		
-  1 year		
-  2 year		
-  5 year		
-  10 year
+
 
 
 ## NO LONGER EXIST IN CURRENT DATASET
@@ -296,6 +330,9 @@ t1_all = table1(~ Sex+ race + ethnicity + DaysDOBtoEpicDeath + Death_YN + AgeDay
        data = analysis)
 
 t1_all
+
+table(analysis$FLAG_died_admission)
+table(analysis$mortality_after_discharge)
 
 ```
 
