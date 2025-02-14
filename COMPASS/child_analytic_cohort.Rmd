@@ -21,7 +21,7 @@ tab_8_adt <- read.csv("S:/Sakamoto/Nephrology/Data/Table 8 ADT Table.csv")
 
 ```
 
-```{r johns code, include=FALSE}
+```{r dc, include=FALSE}
 # Step 1: Initial data setup
 AKI_COMPASS_DATA_T1 <- tab_1_person
 
@@ -152,9 +152,25 @@ stage_summary <- labs_cr %>%
 
 # may need to confirm date happens during admission
 tab_7_consult = tab_7_proc %>% filter(ProcedureName == "CONSULT INPT NEPHROLOGY")
-analysis2 = left_join(analysis, tab_7_consult)
+analysis = left_join(analysis, tab_7_consult)
 
-analysis2 %>% summarise(sum(!is.na(ProcedureName)))
+# analysis %>% summarise(sum(!is.na(ProcedureName)))
+
+# Step 11: Table 8: Admission, discharge dates etc
+tab8_towide = tab_8_adt %>% select(ArbPersonID, ArbEncounterID, EventType, DaysFromDOBtoEventdate) %>% filter(EventType %in% c("Admission", "Discharge"))
+tab8_wide <- tab8_towide %>% 
+  pivot_wider(
+    names_from = EventType, 
+    values_from = DaysFromDOBtoEventdate,
+    values_fn = mean
+  ) %>%
+  mutate(across(where(is.character), ~ na_if(., "NULL"))) %>%
+  mutate(across(where(is.character), as.numeric))
+
+analysis = left_join(analysis, tab8_wide)
+sum(is.na(analysis$Admission))
+sum(is.na(analysis$Discharge))
+
 ```
 
 ```{r tab 2 7 workspace, include = FALSE}
@@ -193,6 +209,9 @@ consult_df = as.data.frame(table(tab_7_proc$ProcedureName))
 
 ## T7 
 - confirm consult is the only category in procedures table, right now we have 24 consults, 13 of which are in our analysis data
+
+## T8
+- Looks like some values are NULL even in the original dataset; missing 3303 admission dates and 2783 discharge dates. expected?
 
 # DESC TABLES
 
