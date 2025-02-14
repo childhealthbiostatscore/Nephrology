@@ -213,6 +213,76 @@ consult_df = as.data.frame(table(tab_7_proc$ProcedureName))
 ## T8
 - Looks like some values are NULL even in the original dataset; missing 3303 admission dates and 2783 discharge dates. expected?
 
+
+
+Vars: 
+Label name	Var name	location
+
+## DERIVED/READY TO PUT IN TABLE AS IS
+
+Age at admission	AgeAtTimeOfAdmission	Table 2 Encounters -----------
+Sex (male)	Sex	Table 1 Person -----------
+Race	Race	Table 1 Person -----------
+Ethnicity	Ethnicity	Table 1 Person -----------
+In state (yes)	In_state_yn	Table 2 Encounters -----------
+Died (yes) 	Death_YN	Table 1 ------------
+
+
+## WAITING ON EMAIL FROM DONIA (UPDATED DATA) AND GUIDANCE ON WHICH WEIGHT/HEIGH TO USE (SEE TAB_3_CLEANING PROGRAM)
+
+Weight on admission (kg)	?	Table 3 Flow Sheet 
+Wt for age z score		NA - need age in months  Derived Table 3
+Height on admission (cm)	?	Table 3 Flow Sheet
+Height for age z score 		NA - need age in months  Derived Table 3
+BMI (use CDC staging for categorical, also report as continuous		NA - need age in months  Derived Table 3
+BSA (Body Surface Area)	?	Table 3 Flow Sheet
+ECMO (yes)	?	Table 3? (Daniell emailed asking for this 4.7.2022)
+
+
+## VARS TO CONFIRM QUESTIONS
+
+Primary admission dx (will need to categorize) PrimaryAdmissionDiagnosis	Table 2 Encounters
+Financial Class	FinancialClass	Table 2 Encounters
+Nephrology consult	?	Table 7
+
+## VARS TO FIND
+
+Nephrotoxin	?	Table 5? - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7393580/ - use this to identify exposure to neptox. exposures during hosp
+Number		
+  1		
+  2		
+  3		
+  .>3	
+  
+Community acquired AKI, yes		? -- look at lab scr 180 days before admission, during admission and discharge
+Time from admission to AKI in those with hospital acquired AKI (? Days or hours)		?
+Prior history of KDIGO AKI 	?	?
+Stage 1		
+Stage 2		
+Stage 3		
+
+Died During admission		?
+Mortality after discharge		? - questions about what date variable to use -- no more cdphe data included(?) in previous data
+  30 day		
+  90 day		
+  1 year		
+  2 year		
+  5 year		
+  10 year
+
+
+## NO LONGER EXIST IN CURRENT DATASET
+
+Zip Code	Zip_code_3_digits	Table 2 Encounters
+Urban vs suburban		Table 2 Encounters
+Distance from CHCO	distance_from_hospital	Table 2 Encounters
+  <20 miles		
+  20-50 miles		
+  50-80 miles		
+  80-100		
+, >100
+
+
 # DESC TABLES
 
 ```{r t12}
@@ -285,74 +355,4 @@ kable(table(analysis$payorfinancialclass))
 # Primary admission description?
 kable(table(analysis$PrimaryDx))
 ```
-
-Vars: 
-Label name	Var name	location
-
-## DERIVED/READY TO PUT IN TABLE AS IS
-
-Age at admission	AgeAtTimeOfAdmission	Table 2 Encounters -----------
-Sex (male)	Sex	Table 1 Person -----------
-Race	Race	Table 1 Person -----------
-Ethnicity	Ethnicity	Table 1 Person -----------
-In state (yes)	In_state_yn	Table 2 Encounters -----------
-Died (yes) 	Death_YN	Table 1 ------------
-
-
-## WAITING ON EMAIL FROM DONIA (UPDATED DATA) AND GUIDANCE ON WHICH WEIGHT/HEIGH TO USE (SEE TAB_3_CLEANING PROGRAM)
-
-Weight on admission (kg)	?	Table 3 Flow Sheet 
-Wt for age z score		NA - need age in months  Derived Table 3
-Height on admission (cm)	?	Table 3 Flow Sheet
-Height for age z score 		NA - need age in months  Derived Table 3
-BMI (use CDC staging for categorical, also report as continuous		NA - need age in months  Derived Table 3
-BSA (Body Surface Area)	?	Table 3 Flow Sheet
-ECMO (yes)	?	Table 3? (Daniell emailed asking for this 4.7.2022)
-
-
-## VARS TO CONFIRM QUESTIONS
-
-Primary admission dx (will need to categorize) PrimaryAdmissionDiagnosis	Table 2 Encounters
-Financial Class	FinancialClass	Table 2 Encounters
-Nephrology consult	?	Table 7
-
-## VARS TO FIND
-
-Nephrotoxin	?	Table 5? - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7393580/ - use this to identify exposure to neptox. exposures during hosp
-Number		
-  1		
-  2		
-  3		
-  .>3	
-  
-Community acquired AKI, yes		? -- look at lab scr 180 days before admission, during admission and discharge
-Time from admission to AKI in those with hospital acquired AKI (? Days or hours)		?
-Prior history of KDIGO AKI 	?	?
-Stage 1		
-Stage 2		
-Stage 3		
-
-Died During admission		?
-Mortality after discharge		? - questions about what date variable to use -- no more cdphe data included(?) in previous data
-  30 day		
-  90 day		
-  1 year		
-  2 year		
-  5 year		
-  10 year
-
-
-## NO LONGER EXIST IN CURRENT DATASET
-
-Zip Code	Zip_code_3_digits	Table 2 Encounters
-Urban vs suburban		Table 2 Encounters
-Distance from CHCO	distance_from_hospital	Table 2 Encounters
-  <20 miles		
-  20-50 miles		
-  50-80 miles		
-  80-100		
-, >100
-
-
-
 
