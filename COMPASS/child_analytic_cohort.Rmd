@@ -325,8 +325,8 @@ Distance from CHCO	distance_from_hospital	Table 2 Encounters
 # Variables of interest for T1
 
 # ALL Vars t1 and t2
-t1_all = table1(~ Sex+ race + ethnicity + DaysDOBtoEpicDeath + Death_YN + AgeDays +
-         Hospital + State  + AKICohortYN + CRRTCohortYN + AKILabYN + AKIDxYN + BaselineResultValue, 
+t1_all = table1(~ Sex+ race + ethnicity  + AgeDays +Hospital + State  + AKICohortYN + CRRTCohortYN + AKILabYN + 
+          AKIDxYN + BaselineResultValue+ DaysDOBtoEpicDeath + Death_YN + FLAG_died_admission + mortality_after_discharge, 
        data = analysis)
 
 t1_all
