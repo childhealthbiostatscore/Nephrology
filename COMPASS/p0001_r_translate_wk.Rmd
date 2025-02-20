@@ -1,0 +1,82 @@
+---
+title: "p0001_translate"
+author: "Casey Sakamoto"
+date: "2025-02-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# used in tandem with the tab 3 cleaning program- -- translated from john brintons code of same name
+# Load necessary libraries
+library(dplyr)
+library(haven)   # For reading SAS datasets
+library(zscorer) # For WHO growth calculations
+library(anthro)  # For CDC growth calculations
+library(readr)   # For writing CSV files
+
+# Read the dataset
+data <- play
+
+# Convert column names to lowercase
+colnames(data) <- tolower(colnames(data))
+
+# Define age in months
+data <- data %>%
+  mutate(age_months = floor(agedays/30))
+
+# Calculate BMI
+data <- data %>%
+  mutate(bmi = weight_kg / (height_cm / 100) ^ 2)
+
+# Calculate WHO z-scores for weight-for-age, height-for-age, and BMI-for-age
+data2 = data %>% select(arbpersonid, sex12, weight_kg, height_cm, age_months) %>% filter(complete.cases(.))
+zScores <- getAllWGS(sex = data2$sex12,
+                     weight = data2$weight_kg,
+                     height = data2$height_cm,
+                     age = data2$age_months,
+                     index = "all")
+
+data <- data %>%
+  mutate(
+    waz = getWGS(sexObserved= sex,firstPart=weight_kg, secondPart = age_months, index = "wfa")$z,
+    haz = getWGS(age_months, sex, height_cm, index = "hfa")$z,
+    bmiz = getWGS(age_months, sex, bmi, index = "bfa")$z
+  )
+
+# Calculate CDC z-scores
+data <- data %>%
+  mutate(
+    waz_cdc = anthro_zscores(age = age_months, sex=sex, weight=weight_kg, "wfa")$zwei,
+    haz_cdc = anthro_zscores(age=age_months, sex=sex, lenhei=height_cm, "hfa")$zlen,
+    bmiz_cdc = anthro_zscores(age=age_months,lenhei=height_cm,weight=weight_kg, sex=sex, "bfa")$zbmi
+  )
+
+# Categorize nutritional status based on WHO criteria
+data <- data %>%
+  mutate(
+    stunted = ifelse(haz < -2, 1, 0),
+    underweight = ifelse(waz < -2, 1, 0),
+    overweight = ifelse(bmiz > 1, 1, 0)
+  )
+
+# Select required columns and export to CSV
+data %>%
+  select(arbpersonid, age_months, sex, weight_kg, height_cm, waz, haz, bmiz, waz_cdc, haz_cdc, bmiz_cdc, stunted, underweight, overweight) %>%
+  write_csv("growth_zscores.csv")
+###############################################
+getAllWGS(sex = c(1,2),
+          weight = c(14.6,13),
+          height = c(98,NA), 
+          age = test,
+          index = "all")
+tests = c(head(data2$sex12))
+testw = c(head(data2$weight_kg))
+testh = c(head(data2$height_cm))
+testa = c(head(data2$age_months))
+getAllWGS(sex = tests,
+          weight = testw,
+          height = testh, 
+          age = testa,
+          index = "all")
+
+```

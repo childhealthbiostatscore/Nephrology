@@ -10,6 +10,8 @@ library(tidyverse)
 library(ggplot2)
 library(table1)
 library(knitr)
+library(zscorer)
+library(stringr)
 
 # Set up paths and read data
 # Adjust file paths to match your system
@@ -18,6 +20,9 @@ tab_2_encount <- read.csv("S:/Sakamoto/Nephrology/Data/Table2 Encounter Table.cs
 tab_4_labs <- read.csv("S:/Sakamoto/Nephrology/Data/Table 4 Labs.csv")
 tab_7_proc <- read.csv("S:/Sakamoto/Nephrology/Data/Table 7 Procedures Table.csv")
 tab_8_adt <- read.csv("S:/Sakamoto/Nephrology/Data/Table 8 ADT Table.csv")
+
+# temp tab 3
+tab_3_TEMP = read.csv2("S:/Sakamoto/Nephrology/Data/derived datasets/play.csv") %>% select(-X)
 
 ```
 
@@ -201,6 +206,45 @@ analysis$mortality_after_discharge <- cut(analysis$death_discharge_days_diff,
                                           labels = c("Before Discharge","<30 days", "30-90 days", "90 days-1 year", "1-2 years", "2-5 years", "5-10 years", ">10 years"),
                                           right = FALSE)
 
+####################################
+# Table 3 merge in TEMP SPOT IN CODE
+
+tab_3_TEMP$weight_kg = tab_3_TEMP$weight_oz*0.0283495
+tab_3_TEMP$height_cm = ifelse(tab_3_TEMP$height_in==0,NA,round(tab_3_TEMP$height_in*2.54,1))
+
+# Define age in months
+tab_3_TEMP <- tab_3_TEMP %>%
+  mutate(age_months = floor(AgeDays/30))
+
+# Calculate BMI
+tab_3_TEMP <- tab_3_TEMP %>%
+  mutate(bmi = weight_kg / (height_cm / 100) ^ 2)
+
+
+analysis = left_join(analysis, tab_3_TEMP)
+###################################
+# Financial class
+analysis = analysis %>% mutate(payorfinancialclass2 = case_when(str_detect(payorfinancialclass, "Commercial") ~ "Commercial",
+                                                                str_detect(payorfinancialclass, "Contract") ~ ifelse(str_detect(payorfinancialclass,"Non"), "Non-Contract","Contract"),
+                                                                str_detect(payorfinancialclass, "Indigent Care") ~ "Indigent Care",
+                                                                str_detect(payorfinancialclass, "Medicaid") ~ "Medicaid",
+                                                                str_detect(payorfinancialclass, "Medicare") ~ "Medicare",
+                                                                str_detect(payorfinancialclass, "NonContract") ~ "NonContract",
+                                                                str_detect(payorfinancialclass, "Other") ~ "Other",
+                                                                str_detect(payorfinancialclass, "Tricare") ~ "Tricare",
+                                                                str_detect(payorfinancialclass, "Self-Pay") ~ "Self-Pay",
+                                                                TRUE ~ NA))
+
+
+##################################
+# TAB 7 merge in TEMP SPOT
+
+tab_7_proc_sum <- tab_7_proc %>%
+  group_by(ArbPersonID) %>%
+  summarise(ProcedureNames = paste(ProcedureName, collapse = " | ")) %>% select(ArbPersonID, ProcedureNames)
+
+analysis = left_join(analysis, tab_7_proc_sum)
+#################################
 
 ```
 
@@ -222,32 +266,65 @@ Dx1 = as.data.frame(table(analysis$PrimaryDx))
 FC1 = as.data.frame(table(analysis$payorfinancialclass))
 # this one seems more easy to clean up with a grepl string match -- confirm that this is ok with john
 
+
+
 # tab 7 cleaning: 
 # look for neph consult in procedures
 consult_df = as.data.frame(table(tab_7_proc$ProcedureName))
 # looks pretty clear cut -- only one category for neph consult -- double check with John that this makes sense
 ```
 
-# Questions
+### Questions
 
-## T1
-
-- it seems like mortality after discharge/during admission can be derived, but would need the admission/discharge window dates -- see t8 question
-
-## T2
+#### T2
 - how to clean up t2 primary initial diagnosis PrimaryDx
-- how to clean up financial class 
 
-## T7 
-- confirm consult is the only category in procedures table, right now we have 24 consults, 13 of which are in our analysis data
+#### T3 
+- figure out why zscore program isnt working for casey
 
-## T8
+#### T7 
+- confirm consult is the only category in procedures table, right now we have 24 consults, 13 of which are in our analysis data; correct dataset?
+
+#### T8
 - Looks like some values are NULL even in the original dataset; missing 3303 admission dates and 2783 discharge dates. expected?
 
+# DESC TABLES
+
+```{r t12}
+#sum(analysis$FLAG_kid_age)
+# 15070 out of 18904 had a T flag for kid age (between 1 and 6570 days)
+# create t1 with all available vars from/derived the data dictionary
+t1_all = table1(~ Sex+ race + ethnicity + height_cm +weight_kg + bmi + BSA_sqm + AgeDays +Hospital + State + payorfinancialclass2  + AKICohortYN + CRRTCohortYN + AKILabYN + 
+          AKIDxYN + BaselineResultValue+ DaysDOBtoEpicDeath + Death_YN + FLAG_died_admission + mortality_after_discharge, 
+       data = analysis)
+
+t1_all
+
+# death stats
+table(analysis$FLAG_died_admission)
+table(analysis$mortality_after_discharge)
+```
+
+# APPENDIX TABLES
+
+## TOTAL PROCEDURES, T4 LABCOMPNAMES AND PRIMARY DX
+
+```{r appendix}
+# all procedures
+kable(table(analysis$ProcedureNames))
 
 
-Vars: 
-Label name	Var name	location
+
+# labs
+kable(table(AKI_COMPASS_DATA_T4$LabCompName))
+
+# 523 have frequency of 5 or greater. 
+# Dx1_g5 = Dx1 %>% filter(Freq >4)
+
+kable(table(analysis$PrimaryDx))
+```
+
+# T1 Notes
 
 ## DERIVED/READY TO PUT IN TABLE AS IS
 
@@ -257,6 +334,10 @@ Race	Race
 Ethnicity	
 In state (yes)	
 Died (yes) 	
+weight
+height
+bsa
+bmi
 
 Died During admission	- derived as FLAG_died_admissions
 
@@ -268,14 +349,9 @@ Mortality after discharge	- now using epic DOD as only var we have now -- derive
   5 year		
   10 year
   
-## WAITING ON EMAIL FROM DONIA (UPDATED DATA) AND GUIDANCE ON WHICH WEIGHT/HEIGHT TO USE (SEE TAB_3_CLEANING PROGRAM)
+## (TAB_3_CLEANING PROGRAM - TODO)
 
-Weight on admission (kg)	?	Table 3 Flow Sheet 
-Wt for age z score		NA - need age in months  Derived Table 3
-Height on admission (cm)	?	Table 3 Flow Sheet
-Height for age z score 		NA - need age in months  Derived Table 3
-BMI (use CDC staging for categorical, also report as continuous		NA - need age in months  Derived Table 3
-BSA (Body Surface Area)	?	Table 3 Flow Sheet
+FIGURE OUT ZSCORE PROGRAM
 
 
 ## VARS TO CONFIRM QUESTIONS
@@ -318,26 +394,7 @@ Distance from CHCO	distance_from_hospital	Table 2 Encounters
 , >100
 
 
-# DESC TABLES
-
-```{r t12}
-#sum(analysis$FLAG_kid_age)
-# 15070 out of 18904 had a T flag for kid age (between 1 and 6570 days)
-# Variables of interest for T1
-
-# ALL Vars t1 and t2
-t1_all = table1(~ Sex+ race + ethnicity  + AgeDays +Hospital + State  + AKICohortYN + CRRTCohortYN + AKILabYN + 
-          AKIDxYN + BaselineResultValue+ DaysDOBtoEpicDeath + Death_YN + FLAG_died_admission + mortality_after_discharge, 
-       data = analysis)
-
-t1_all
-
-table(analysis$FLAG_died_admission)
-table(analysis$mortality_after_discharge)
-
-```
-
-SAS CODE Breakdown:
+## SAS CODE Breakdown:
 t1
 - the four variables of interest for Table 1 are:
                 Sex
@@ -381,22 +438,3 @@ IF (Stage2_flag) THEN STAGE = 2;
 IF (Stage3_flag) THEN STAGE = 3;
 
 - 
-
-
-```{r appendix}
-# labs
-kable(table(AKI_COMPASS_DATA_T4$LabCompName))
-
-# pay or financial class?
-kable(table(analysis$payorfinancialclass))
-
-# Primary admission description?
-# Dx1 = as.data.frame(table(analysis$PrimaryDx))
-# spit out top 10-20 or so and ask Erin about later
-
-# 523 have frequency of 5 or greater. 
-# Dx1_g5 = Dx1 %>% filter(Freq >4)
-
-kable(table(analysis$PrimaryDx))
-```
-

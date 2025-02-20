@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 library(readr)
 library(tidyverse)
+library(data.table)
 # added in 2/3/2025 code NOTE THIS IS A 3Gig file, takes a minute to lood onto machine, lambda maybe needed
 tab_3_flowsheets <- read_csv("S:/Sakamoto/Nephrology/Data/Table 3 Flowsheets Table.csv")
 ```
@@ -88,6 +89,147 @@ tab_3_measurements_wide = tab_3_measurements %>% group_by(ArbPersonID, DaysFromD
 
 ```
 
+
+```{r}
+# HEIGHT WEIGHT Z SCORES -- used in tandem with some datasets derived in child_analytic_cohort
+# Load dataset
+AKI_COMPASS_DATA_T3 <-tab_3_flowsheets %>%
+  filter(FlowSheetRowName %in% c('BSA (Calculated - sq m)', 'Current BSA', 'Dosing Weight', 'Height', 'Weight') |
+         FlowSheetRowName %in% c('HEIGHT', 'R UCH IP BSA', 'R UCH IP DOSING WEIGHT', 'WEIGHT/SCALE') |
+         ValueType %in% c('Patient Height', 'Patient Weight'))
+
+# Merge datasets
+LEFT1 <- merge(first_X_age, AKI_COMPASS_DATA_T3, by = "ArbPersonID", all.x = TRUE)
+
+# Extract weight-related data
+LEFT1_Weight <- LEFT1 %>%
+  filter(FlowSheetRowName %in% c('Dosing Weight', 'Weight') |
+         FlowSheetRowName %in% c('R UCH IP DOSING WEIGHT', 'WEIGHT/SCALE') |
+         ValueType %in% c('Patient Weight')) %>%
+  mutate(day = DaysFromDOBtoValue - AgeDays,
+         ABS_DAY = abs(day)) %>%
+  filter(abs(day) <= 365) %>%
+  rename(weight_oz = Value)
+
+# Extract height-related data
+LEFT1_Height <- LEFT1 %>%
+  filter(FlowSheetRowName %in% c('Height') |
+         FlowSheetRowName %in% c('HEIGHT') |
+         ValueType %in% c('Patient Height')) %>%
+  mutate(day = DaysFromDOBtoValue - AgeDays,
+         ABS_DAY = abs(day)) %>%
+  filter(abs(day) <= 365) %>%
+  rename(height_in = Value)
+
+# Extract BSA-related data
+LEFT1_BSA <- LEFT1 %>%
+  filter(FlowSheetRowName %in% c('BSA (Calculated - sq m)', 'Current BSA') |
+         FlowSheetRowName %in% c('R UCH IP BSA')) %>%
+  mutate(day = DaysFromDOBtoValue - AgeDays,
+         ABS_DAY = abs(day)) %>%
+  filter(abs(day) <= 365) %>%
+  rename(BSA_sqm = Value)
+
+# Select closest to baseline measurement
+Left1_Weight_one <- LEFT1_Weight %>%
+  arrange(ArbPersonID, ABS_DAY) %>%
+  group_by(ArbPersonID) %>%
+  slice(1) %>%
+  select(ArbPersonID, weight_oz, Unit)
+
+Left1_Height_one <- LEFT1_Height %>%
+  arrange(ArbPersonID, ABS_DAY) %>%
+  group_by(ArbPersonID) %>%
+  slice(1) %>%
+  select(ArbPersonID, height_in, Unit)
+
+Left1_BSA_one <- LEFT1_BSA %>%
+  arrange(ArbPersonID, ABS_DAY) %>%
+  group_by(ArbPersonID) %>%
+  slice(1) %>%
+  select(ArbPersonID, BSA_sqm, Unit)
+
+# Frequency tables
+# table(Left1_Weight_one$Unit)
+# table(Left1_Height_one$Unit)
+# table(Left1_BSA_one$Unit)
+
+# Summary statistics
+# summary(as.numeric(Left1_Weight_one$weight_oz))
+# summary(as.numeric(Left1_Height_one$height_in))
+# summary(as.numeric(Left1_BSA_one$BSA_sqm))
+
+# Merge all datasets
+HT_WT_BSA <- reduce(list(first_X_age, Left1_Weight_one, Left1_Height_one, Left1_BSA_one), 
+                     function(x, y) merge(x, y, by = "ArbPersonID", all.x = TRUE)) %>%
+  select(-Unit)
+
+
+# ZSCORES
+
+# Sort and get first observation by AgeAtTimeOfAdmission
+T2_oneobs <- AKI_COMPASS_DATA_T2 %>%
+  arrange(ArbPersonID, desc(AgeDays)) %>%
+  group_by(ArbPersonID) %>%
+  slice(1) %>%
+  ungroup()
+
+# Merge datasets to create FOR_Zscore
+tables_to_merge <- list(AKI_COMPASS_DATA_T1 %>% mutate(BOB = TRUE), first_X_age, HT_WT_BSA, T2_oneobs)
+FOR_Zscore <- Reduce(function(x, y) merge(x, y, by = "ArbPersonID", all.x = TRUE), tables_to_merge) %>%
+  filter(BOB) %>%
+  select(-BOB)
+
+play <- FOR_Zscore # save progress on the play dataset
+play$weight_oz = as.numeric(play$weight_oz)
+play$height_in = as.numeric(play$height_in)
+play$BSA_sqm = as.numeric(play$BSA_sqm)
+play$Sex = ifelse(play$Sex == "Unknown", NA, play$Sex)
+play$weight_kg = play$weight_oz*0.0283495
+play$height_cm = ifelse(play$height_in==0,NA,round(play$height_in*2.54,1))
+play = play %>% mutate(sex12 = case_when(Sex == "Male" ~ 1, Sex == "Female" ~ 2, TRUE ~ NA))
+
+play = play %>% select(ArbPersonID:Death_YN, weight_oz:BaselineResultValue)
+# Include external BMI calculation script
+source("D:/Repositories/Nephrology/COMPASS/p0001_r_translate.R")
+
+data <- data %>%
+  mutate(    waz = getWGS(secondPart = age_months,sexObserved= sex, firstPart=weight_kg, index = "wfa")
+  )
+test = getWGS(sexObserved = data$sex, firstPart = data$weight_kg, secondPart = data$age_months, index = "wfa")
+
+# Filter and select relevant variables
+Z <- _CDCDATA %>%
+  filter(age <= 18) %>%
+  select(age, ArbPersonID, AgeAtTimeOfAdmission, weight_oz, height_in, bsa_sqmet,
+         waz, wapct, bmi, bmiz, bmipct, haz, hapct, _Fwaz, _Fbmiz, _Fhaz)
+
+# Summary statistics
+summary(Z %>% select(age, weight_oz, height_in, bsa_sqmet, waz, wapct, bmi, bmiz, bmipct, haz, hapct, _Fwaz, _Fbmiz, _Fhaz))
+
+# Merge play and Z
+tables_to_merge_final <- list(play, Z)
+aki_t123_firstobs_Z <- Reduce(function(x, y) merge(x, y, by = "ArbPersonID", all.x = TRUE), tables_to_merge_final)
+
+# Export to CSV
+write.csv(aki_t123_firstobs_Z, "H:/From CBC Individual/BrintonJ/AKI/2022.02.15 Health Data Compass Manuscript 1/data/aki_t123_firstobs.csv", row.names = FALSE)
+
+# Save dataset
+saveRDS(aki_t123_firstobs_Z, "H:/From CBC Individual/BrintonJ/AKI/2022.02.15 Health Data Compass Manuscript 1/data/wft.rds")
+
+# # Load dataset into library
+# saveRDS(aki_t123_firstobs_Z, "H:/From CBC Individual/BrintonJ/AKI/2022.02.15 Health Data Compass Manuscript 1/data/AKI_T123_firstobs_Z.rds")
+# AKI_T123_firstobs_Z <- readRDS("H:/From CBC Individual/BrintonJ/AKI/2022.02.15 Health Data Compass Manuscript 1/data/AKI_T123_firstobs_Z.rds")
+
+# Univariate analysis
+# hist(AKI_T123_firstobs_Z$AgeAtTimeOfAdmission, breaks = seq(0, 85, 1), main = "Age at Time of Admission", xlab = "Age")
+# hist(AKI_T123_firstobs_Z$AgeAtTimeOfAdmission[AKI_T123_firstobs_Z$AgeAtTimeOfAdmission <= 18], 
+#      breaks = seq(0, 18, 1), main = "Age at Time of Admission (<=18)", xlab = "Age")
+
+
+```
+
+
 ```{r csv write}
 ### DO NOT RUN UNLESS READY
 
@@ -96,5 +238,11 @@ tab_3_measurements_wide = tab_3_measurements %>% group_by(ArbPersonID, DaysFromD
 
 # wide form with mean taken for multiple date/times -- doesnt look like this changes any values at cursory glance of first ~ 5 values where this would occur
 write_csv2(tab_3_measurements_wide, "tab_3_meas_wide.csv")
+write_csv2(AKI_COMPASS_DATA_T3, "tab_3_wt_ht.csv")
+
+# Save johns table 1 height weight bsa dataset
+write.csv2(HT_WT_BSA, "HT_WT_BSA.csv")
+write.csv2(play, "play.csv")
+
 
 ```
