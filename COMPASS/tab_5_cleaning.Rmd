@@ -1,0 +1,50 @@
+---
+title: "Untitled"
+author: "Casey Sakamoto"
+date: "2025-02-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(stringr)
+library(readr)
+library(data.table)
+
+# tab 5
+tab_5_admmeds <- read.csv("S:/Sakamoto/Nephrology/Data/Table 5 Administered Meds.csv")
+
+# med list from pubmed article in DD
+n_medications <- c("Ambisome", "Foscarnet", "Methotrexate",
+                 "Amikacin", "Gadopentetate dimeglumine", "Nafcillin",
+                 "Amphotericin B", "Gadoextate disodium", "Piperacillin","Tazobactam",
+                 "Captopril", "Ganciclovir", "Piperacillin",
+                 "Carboplatin", "Gentamicin", "Sirolimus",
+                 "Cefotaxime", "Ibuprofen", "Sulfasalazine",
+                 "Ceftazidime", "Ifosfamide", "Tacrolimus",
+                 "Cefuroxime", "Iodixanol", "Ticarcillin","Clavulanic Acid",
+                 "Cidofovir", "Iohexol", "Tobramycin",
+                 "Cisplatin", "Iopamidol", "Topiramate",
+                 "Colistimethate", "Ioversol", "Valacyclovir",
+                 "Cyclosporine", "Ketorolac", "Valganciclovir",
+                 "Dapsone", "Lisinopril", "Vancomycin",
+                 "Enalapril", "Lithium", "Zonisamide")
+
+# tab_5_admmeds$MatchedMedications <- apply(tab_5_admmeds, 1, function(row) {
+#   # Search in both Name and GenericName columns
+#   matches <- grep(paste(n_medications, collapse = "|"), 
+#                   paste(row["Name"], row["GenericName"]), 
+#                   ignore.case = TRUE)
+#   
+#   # Return matched medication(s) or NA if no match
+#   if(length(matches) > 0) {
+#     return(paste(n_medications[matches], collapse = ", "))
+#   } else {
+#     return(NA)
+#   }
+# })
+
+# Create a column 'match' which checks if any word in the name matches any medication (case insensitive)
+tab_5_admmeds <- transform(tab_5_admmeds, Topic=grepl(tab_5_admmeds$Name, paste0(n_medications,collapse='|')))
+```
+
