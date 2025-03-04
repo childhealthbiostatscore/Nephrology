@@ -26,6 +26,86 @@ tab_3_TEMP = read.csv2("S:/Sakamoto/Nephrology/Data/derived datasets/play.csv") 
 
 ```
 
+Step 1: Preparing the Dataset
+The dataset AKI_COMPASS_DATA_T1 is loaded from another table (tab_1_person).
+Some previously used variables (Diff_DOD and ID_DOD_89) are no longer needed, so they have been removed.
+
+Step 2: Checking for Missing Demographics
+A summary table is created to count missing values in key demographic variables like Sex, race, ethnicity, and Death_YN.
+Another summary is generated for the DaysDOBtoEpicDeath variable to check:
+The total number of records
+Missing values
+Mean, median, and range (minimum and maximum)
+
+Step 3: Filtering Data for Relevant Patients
+The dataset AKI_COMPASS_DATA_T2 is created by selecting only patients from another table (tab_2_encount) who also exist in AKI_COMPASS_DATA_T1.
+This ensures that only relevant patients are included in further analyses.
+
+Step 4: Identifying Pediatric Patients
+The first recorded encounter for each patient is identified.
+Two new flags are created:
+FLAG_missing_age: Identifies missing age values.
+FLAG_kid_age: Marks patients who are under 18 years old.
+
+Step 5: Checking Baseline Lab Values
+The script calculates summary statistics for BaselineResultValue (a key lab measurement).
+Patients with extreme or missing values are flagged.
+
+Step 6: Merging Data from Different Tables
+Tables 1 and 2 are merged to create the main dataset (analysis).
+A new flag is created to identify patients with BaselineResultValue > 8 (indicating potentially abnormal values).
+The dataset is filtered to exclude patients who are 18 years or older.
+
+Step 7: Analyzing Lab Data
+The dataset AKI_COMPASS_DATA_T4 (lab results) is filtered to include only relevant patients.
+Lab data is merged with the main dataset.
+Specific lab tests related to Creatinine levels are examined to determine if patients meet certain medical thresholds for acute kidney injury (AKI):
+Stage 1: Small increase in creatinine.
+Stage 2: Doubling of creatinine levels.
+Stage 3: Tripling of creatinine or an extremely high absolute value.
+Patients are assigned a Stage (0-3) based on these thresholds.
+
+Step 8: Nephrology Consult Data
+The dataset tab_7_proc is filtered to include only patients who had an inpatient nephrology consultation.
+This information is merged into the main dataset.
+
+Step 9: Hospital Admissions & Discharges
+The dataset tab_8_adt (hospital admissions/discharges) is processed to:
+Identify admission and discharge dates for each patient.
+Merge these dates into the main dataset.
+Calculate whether a patient died during admission.
+Calculate how many days passed between discharge and death.
+Categorize the time between discharge and death into groups like:
+Before discharge
+<30 days
+30-90 days
+1-2 years, etc.
+
+Step 10: Weight, Height, and BMI Calculations
+Weight (in ounces) is converted to kilograms.
+Height (in inches) is converted to centimeters.
+BMI (Body Mass Index) is calculated using weight and height.
+
+Step 11: Categorizing Insurance Types
+The payorfinancialclass variable is reformatted into broader insurance categories, such as:
+Commercial
+Medicaid
+Medicare
+Indigent Care
+Tricare
+Self-Pay, etc.
+
+Step 12: Merging Procedure Data
+A summary of all procedures performed on each patient is created.
+This information is merged into the main dataset for further analysis.
+Final Outcome
+After completing all these steps, the dataset is cleaned, structured, and ready for further analysis. The dataset now:
+
+Includes only relevant patients.
+Flags missing or extreme values.
+Categorizes patients based on age, kidney injury stage, and mortality risk.
+Merges lab, hospital, and procedure data for a comprehensive view.
+
 ```{r dc, include=FALSE}
 # Step 1: Initial data setup
 AKI_COMPASS_DATA_T1 <- tab_1_person
