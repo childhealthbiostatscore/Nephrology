@@ -10,7 +10,9 @@ output: html_document
 library(devtools)
 library(Hmisc)
 library(tableone)
-
+library(ggplot2)
+library(tidyverse)
+library(readxl)
 
 df <- read.csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
 #df <- read.csv("H:/From CBC Individual/BrintonJ/AKI/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
@@ -145,9 +147,9 @@ library(tableone)
 library(openxlsx)
 
 # List of exposure variables
-exp_vars <- c("Vancomycin_exp", "Zosyn_exp", "Aminoglycosides_exp", "Amphotericin_exp", "Antivirals_exp", 
-              "Contrast_exp", "NSAID_exp", "Ketorolac_exp", "Celecoxib_exp", "Calcineurin_inhibitors_exp", 
-              "Sirolimus_exp", "AED_exp", "ACE_ARB_exp")
+exp_vars <- c("Vancomycin_exp", "Zosyn_exp",  "Antivirals_exp", 
+              "Contrast_exp", "NSAID_exp", "Ketorolac_exp",  "Calcineurin_inhibitors_exp"
+             )
 
 # List of variable names for the table
 vars_2 <- c("count_40_Vancomycin", "time_flag_to_peak", "LOS_ICU", "CKD_gte_stage_3", "Kidney_transplant", 
@@ -204,8 +206,114 @@ for (exp_var in exp_vars) {
 saveWorkbook(wb, file = "table2_multiple.xlsx", overwrite = TRUE)
 
 
-###########Table 3############
-#tables 3# Load necessary libraries# Load necessary libraries
+
+#######################
+# SUPRATHERAPEUTIC COMMENTS DATA
+st_comments<- read.csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/st_vanc_comment.csv")
+# pull comments from supratherapeutic variables
+varcom_list = c("supratherapeutic_vancomyci","cyclosporine_level_300","gentamicin_trough_2", "tacrolimus_level_15")
+
+st_comments = st_comments %>% filter(Field %in% varcom_list) 
+table(st_comments$Comment, st_comments$Field)
+
+st_comments_v = st_comments %>% filter(Field =="supratherapeutic_vancomyci")
+st_comments_c = st_comments %>% filter(Field =="cyclosporine_level_300")
+st_comments_t = st_comments %>% filter(Field =="tacrolimus_level_15")
+
+###########################
+
+
+###########################
+# Stacked bars
+custom_exposure_order <- c(
+  "Vancomycin_exp",
+  "Zosyn_exp",
+  "Antivirals_exp",
+  "Contrast_exp",
+  "NSAID_exp",
+  "Ketorolac_exp",
+  "Calcineurin_inhibitors_exp"
+)
+
+# Figure DF
+df_bar = df %>% select(record_id, highest_aki_stage_for_this, Vancomycin_exp, Zosyn_exp, Antivirals_exp, Contrast_exp, NSAID_exp, Ketorolac_exp, Calcineurin_inhibitors_exp)
+
+
+# Convert from wide to long format
+exposure_rf_stacked_df <- df_bar %>%
+  pivot_longer(cols = -c(record_id, highest_aki_stage_for_this), 
+               names_to = "Exposure", 
+               values_to = "Exposure_Status") %>%
+  filter(Exposure_Status == "Yes")  # Keep only "Yes" exposures
+
+# Generate the stacked bar chart
+# Compute proportions within each exposure group
+exposure_rf_stacked_df_summary <- exposure_rf_stacked_df %>%
+  count(Exposure, highest_aki_stage_for_this) %>%
+  group_by(Exposure) %>%
+  mutate(prop = n / sum(n) * 100, label = sprintf("%.2f%%", prop))
+
+# Ensure factors are ordered for proper plotting
+exposure_rf_stacked_df_summary$Exposure <- factor(exposure_rf_stacked_df_summary$Exposure, levels = rev(custom_exposure_order))
+exposure_rf_stacked_df_summary$highest_aki_stage_for_this <- factor(exposure_rf_stacked_df_summary$highest_aki_stage_for_this, levels= c("Stage 3 (Daily Scr >= 3 times baseline or provision of dialysis for an AKI related reason)","Stage 2 (Daily Scr 2 - 2.9 times baseline)", "Stage 1 (0.3 increase in Daily Scr  or Daily Scr 1.5 - 1.9 times baseline)"), labels = c("Stage 3", "Stage 2", "Stage 1"))
+
+# Generate the horizontal stacked bar chart
+ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = prop, fill = highest_aki_stage_for_this)) +
+  geom_col(position = "stack", width = 0.7) +  # Use geom_col() for precomputed values
+  geom_text(aes(label = sprintf("%.1f%%", prop)), 
+            position = position_stack(vjust = 0.5),  # Center labels
+            color = "white", size = 4) +  # Adjust text size & color
+  scale_x_continuous(labels = scales::percent_format(scale = 1)) +  # Convert to percent
+  labs(title = "Proportion of Patients by Exposure and Peak AKI Stage",
+       x = "Percent of Row Frequency",
+       y = "NTMx Exposure",
+       fill = "Peak AKI Stage") +
+  theme_minimal()
+# Save the relative frequency plot
+#ggsave("fig1_rf_plot.png",width = 14, height = 6, dpi = 300, units = "in")
+
+# Generate frequency-based stacked bar chart
+ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = highest_aki_stage_for_this)) +
+  geom_col(position = "stack", width = 0.7) +  # Stacked bars with raw counts
+  geom_text(aes(label = n), 
+            position = position_stack(vjust = 0.5),  # Center labels
+            color = "white", size = 4) +  # Adjust text size & color
+  labs(title = "Number of Patients by Exposure and Peak AKI Stage",
+       x = "Patient Count",
+       y = "NTMx Exposure",
+       fill = "Peak AKI Stage") +
+  theme_minimal()
+
+# Save the frequency-based plot
+#ggsave("fig1_f_plot.png", width = 14, height = 6, dpi = 300)
+
+###########################
+# TABLE 2 NAKI OUTCOMES BY NTMx
+# note: original code in original program file (not _cs)
+t2_df = df %>% select(record_id, highest_aki_stage_for_this,time_flag_to_peak, LOS_ICU, CKD_gte_stage_3,
+                      Kidney_transplant, previous_AKI, single_kidney, highest_aki_stage_for_this,pct_cre_inc, dialysis_needed_after_hosp, indication_for_dialysis___1:
+                        indication_for_dialysis___5,ecmo_during_hospitalizatio, death,
+                      Vancomycin_exp, Zosyn_exp, Antivirals_exp, Contrast_exp, NSAID_exp, Ketorolac_exp, Calcineurin_inhibitors_exp)
+
+
+# Convert from wide to long format
+t2_df_long <- t2_df %>%
+  pivot_longer(cols = -c(record_id:death), 
+               names_to = "Exposure", 
+               values_to = "Exposure_Status") %>%
+  filter(Exposure_Status == "Yes") %>% select(-record_id, -Exposure_Status) # Keep only "Yes" exposures
+
+exposure_rf_stacked_df_summary$Exposure <- factor(exposure_rf_stacked_df_summary$Exposure, levels = rev(custom_exposure_order))
+
+
+t2_t = CreateTableOne(data = t2_df_long, strata = "Exposure")
+t2_s <- print(t2_t,  quote = FALSE, noSpaces = TRUE, printToggle = FALSE )
+## Save to a CSV file
+write.csv(t2_s, file ="table2_mul.csv")
+
+
+###################################
+# TABLE 3 chronology of exposure
 library(dplyr)
 library(tableone)
 library(openxlsx)
@@ -226,7 +334,7 @@ vars_3 <- c(
   "ID_Calcineurin_inhibitors_ex", "ID_Sirolimus_3_to_0", "ID_AED_3_to_0", "ID_ACE_ARB_3_to_0", "ID_Vancomycin_0_to_7", 
   "ID_Zosyn_0_to_7", "ID_Aminoglycosides_0_to_7", "ID_Amphotericin_0_to_7", "ID_Antivirals_0_to_7", 
   "ID_Contrast_0_to_7", "ID_NSAID_0_to_7", "ID_Ketorolac_0_to_7", "ID_Celecoxib_0_to_7", "ID_Calcineurin_inhibitors_ex", 
-  "ID_Sirolimus_0_to_7", "ID_AED_0_to_7", "ID_ACE_ARB_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
+  "ID_Sirolimus_0_to_7", "ID_AED_0_to_7", "ID_ACE_ARB_0_to_7", "time_flag_to_AKI", "supratherapeutic_vancomyci", 
   "gentamicin_trough_2", "cyclosporine_level_300", "tacrolimus_level_15","day_vaso")
 
 # List of non-normal variables for the table
@@ -236,7 +344,7 @@ nonnormal_vars <- c(
   "ID_Calcineurin_inhibitors_ex", "ID_Sirolimus_3_to_0", "ID_AED_3_to_0", "ID_ACE_ARB_3_to_0", "ID_Vancomycin_0_to_7", 
   "ID_Zosyn_0_to_7", "ID_Aminoglycosides_0_to_7", "ID_Amphotericin_0_to_7", "ID_Antivirals_0_to_7", 
   "ID_Contrast_0_to_7", "ID_NSAID_0_to_7", "ID_Ketorolac_0_to_7", "ID_Celecoxib_0_to_7", "ID_Calcineurin_inhibitors_ex", 
-  "ID_Sirolimus_0_to_7", "ID_AED_0_to_7", "ID_ACE_ARB_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
+  "ID_Sirolimus_0_to_7", "ID_AED_0_to_7", "ID_ACE_ARB_0_to_7", "time_flag_to_AKI", "supratherapeutic_vancomyci", 
   "gentamicin_trough_2", "cyclosporine_level_300", "tacrolimus_level_15","day_vaso")
 
 
@@ -283,249 +391,5 @@ for (exp_var in exp_vars) {
 # Save the workbook to a file
 saveWorkbook(wb, file = "table3_multiple.xlsx", overwrite = TRUE)
 
-#there is some manual editing of table 2 that will take place....ugh...
-
-#######################
-# SUPRATHERAPEUTIC COMMENTS DATA
-st_comments<- read.csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/st_vanc_comment.csv")
-# pull comments from supratherapeutic variables
-varcom_list = c("supratherapeutic_vancomyci","cyclosporine_level_300","gentamicin_trough_2", "tacrolimus_level_15")
-
-st_comments = st_comments %>% filter(Field %in% varcom_list) 
-table(st_comments$Comment, st_comments$Field)
-
-st_comments_v = st_comments %>% filter(Field =="supratherapeutic_vancomyci")
-st_comments_c = st_comments %>% filter(Field =="cyclosporine_level_300")
-st_comments_t = st_comments %>% filter(Field =="tacrolimus_level_15")
-
-
-
-
-
-
-
-
-
-
-
-
-
-###########################
-#tables 3# Load necessary libraries# Load necessary libraries
-library(dplyr)
-library(tableone)
-library(openxlsx)
-
-# Read the data
-df_d <- read.csv("H:/From CBC Individual/BrintonJ/AKI/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_e.csv")
-df_d[df_d == "."] <- NA
-
-# List of exposure variables
-exp_vars <- c("Vancomycin_exp", "Zosyn_exp", "Aminoglycosides_exp", "Amphotericin_exp", "Antivirals_exp", 
-              "Contrast_exp", "NSAID_exp", "Ketorolac_exp", "Celecoxib_exp", "Calcineurin_inhibitors_exp", 
-              "Sirolimus_exp", "AED_exp", "ACE_ARB_exp")
-
-# List of variable names for the table
-vars_3 <- c(
-  "ID_Vancomycin_3_to_0", "ID_Zosyn_3_to_0", "ID_Aminoglycosides_3_to_0", "ID_Amphotericin_3_to_0", 
-  "ID_Antivirals_3_to_0", "ID_Contrast_3_to_0", "ID_NSAID_3_to_0", "ID_Ketorolac_3_to_0", "ID_Celecoxib_3_to_0", 
-  "ID_Calcineurin_inhibitors_ex", "ID_Sirolimus_3_to_0", "ID_AED_3_to_0", "ID_ACE_ARB_3_to_0", "ID_Vancomycin_0_to_7", 
-  "ID_Zosyn_0_to_7", "ID_Aminoglycosides_0_to_7", "ID_Amphotericin_0_to_7", "ID_Antivirals_0_to_7", 
-  "ID_Contrast_0_to_7", "ID_NSAID_0_to_7", "ID_Ketorolac_0_to_7", "ID_Celecoxib_0_to_7", "ID_Calcineurin_inhibitors_ex", 
-  "ID_Sirolimus_0_to_7", "ID_AED_0_to_7", "ID_ACE_ARB_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-  "gentamicin_trough_2", "cyclosporine_level_300", "tacrolimus_level_15","day_vaso")
-
-# List of non-normal variables for the table
-nonnormal_vars <- vars_3
-
-# Create a new workbook
-wb <- createWorkbook()
-
-# Loop over the exposure variables to create separate data frames and sheets
-for (exp_var in exp_vars) {
-  # Print the unique values in the current exposure variable
-  print(paste("Processing:", exp_var))
-  if(!exp_var %in% colnames(df_d)) {
-    print(paste("Column not found:", exp_var))
-    next
-  }
-  
-  print(paste("Unique values in", exp_var, ":", unique(df_d[[exp_var]])))
-  
-  # Filter the data frame based on the current exposure variable
-  df_exp <- df_d %>% filter(!!sym(exp_var) == "Yes")
-  print(paste(exp_var, "Rows:", nrow(df_exp)))
-  
-  # Check if the filtered data frame has any rows
-  if (nrow(df_exp) == 0) {
-    next  # Skip to the next iteration if no rows
-  }
-  
-  # Check if the filtered data frame contains the required variables
-  valid_vars <- vars_3[vars_3 %in% colnames(df_exp)]
-  print(paste(exp_var, "Valid vars:", length(valid_vars)))
-  
-  if (length(valid_vars) == 0) {
-    next  # Skip to the next iteration if no valid variables
-  }
-  
-  # Create the table
-  tab_exp <- CreateTableOne(vars = valid_vars, data = df_exp, factorVars = valid_vars)
-  
-  # Get the summary of the table including N
-  tab_exp_summary <- summary(tab_exp, showAllLevels = TRUE, nonnormal = valid_vars, quote = FALSE, noSpaces = TRUE)
-  
-  # Convert the summary to a data frame for writing to Excel
-  tabMat_exp_df <- as.data.frame(tab_exp_summary)
-  
-  # Add the row names (variable names) as the first column in the data frame
-  tabMat_exp_df <- cbind(Variable = rownames(tabMat_exp_df), tabMat_exp_df)
-  
-  # Add a worksheet to the workbook
-  addWorksheet(wb, sheetName = exp_var)
-  
-  # Write the data frame to the worksheet
-  writeData(wb, sheet = exp_var, x = tabMat_exp_df, colNames = TRUE)
-}
-
-# Save the workbook to a file
-saveWorkbook(wb, file = "table3_multiple.xlsx", overwrite = TRUE)
-
-
-###attempt to simplify the tables:
-# Load necessary libraries
-library(dplyr)
-library(tableone)
-library(openxlsx)
-
-# Read the data
-df_d <- read.csv("H:/From CBC Individual/BrintonJ/AKI/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_e.csv")
-df_d[df_d == "."] <- NA
-
-# List of exposure variables
-exp_vars <- c("Vancomycin_exp", "Zosyn_exp", "Aminoglycosides_exp", "Amphotericin_exp", "Antivirals_exp", 
-              "Contrast_exp", "NSAID_exp", "Ketorolac_exp", "Celecoxib_exp", "Calcineurin_inhibitors_exp", 
-              "Sirolimus_exp", "AED_exp", "ACE_ARB_exp")
-
-# Define a named list of variable subsets for each exposure variable
-var_subsets <- list(
-  Vancomycin_exp = c("ID_Vancomycin_3_to_0", "ID_Vancomycin_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                     "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  Zosyn_exp = c("ID_Zosyn_3_to_0", "ID_Zosyn_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  Aminoglycosides_exp = c("ID_Aminoglycosides_3_to_0", "ID_Aminoglycosides_0_to_7", "time_flag_to_peak", 
-                          "supratherapeutic_vancomyci", "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  Amphotericin_exp = c("ID_Amphotericin_3_to_0", "ID_Amphotericin_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                       "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  Antivirals_exp = c("ID_Antivirals_3_to_0", "ID_Antivirals_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                     "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  Contrast_exp = c("ID_Contrast_3_to_0", "ID_Contrast_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                   "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  NSAID_exp = c("ID_NSAID_3_to_0", "ID_NSAID_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  Ketorolac_exp = c("ID_Ketorolac_3_to_0", "ID_Ketorolac_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                    "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  Celecoxib_exp = c("ID_Celecoxib_3_to_0", "ID_Celecoxib_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                    "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  Calcineurin_inhibitors_exp = c("ID_Calcineurin_inhibitors_ex", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                                 "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  Sirolimus_exp = c("ID_Sirolimus_3_to_0", "ID_Sirolimus_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                    "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  AED_exp = c("ID_AED_3_to_0", "ID_AED_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-              "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso"),
-  ACE_ARB_exp = c("ID_ACE_ARB_3_to_0", "ID_ACE_ARB_0_to_7", "time_flag_to_peak", "supratherapeutic_vancomyci", 
-                  "gentamicin_trough_2", "cyclosporine_level_300", "day_vaso")
-)
-
-# Create a new workbook
-wb <- createWorkbook()
-
-# Loop over the exposure variables to create separate data frames and sheets
-for (exp_var in names(var_subsets)) {
-  # Print the unique values in the current exposure variable
-  print(paste("Processing:", exp_var))
-  if(!exp_var %in% colnames(df_d)) {
-    print(paste("Column not found:", exp_var))
-    next
-  }
-  
-  print(paste("Unique values in", exp_var, ":", unique(df_d[[exp_var]])))
-  
-  # Filter the data frame based on the current exposure variable
-  df_exp <- df_d %>% filter(!!sym(exp_var) == "Yes")
-  print(paste(exp_var, "Rows:", nrow(df_exp)))
-  
-  # Check if the filtered data frame has any rows
-  if (nrow(df_exp) == 0) {
-    next  # Skip to the next iteration if no rows
-  }
-  
-  # Get the subset of variables for the current exposure variable
-  valid_vars <- var_subsets[[exp_var]]
-  valid_vars <- valid_vars[valid_vars %in% colnames(df_exp)]
-  print(paste(exp_var, "Valid vars:", length(valid_vars)))
-  
-  if (length(valid_vars) == 0) {
-    next  # Skip to the next iteration if no valid variables
-  }
-  
-  # Determine which variables are categorical and which are continuous
-  factor_vars <- valid_vars[sapply(df_exp[valid_vars], is.factor) | sapply(df_exp[valid_vars], is.character)]
-  nonnormal_vars <- valid_vars[!valid_vars %in% factor_vars]
-  print(nonnormal_vars)
-  
-  # Create the table
-  tab_exp <- CreateTableOne(vars = valid_vars, data = df_exp, factorVars = factor_vars)
-  
-  # Debugging step to check the contents of tab_exp
-  print(tab_exp)
-  str(tab_exp)
-  
-  # Get the summary of the table including N
-  tab_exp_summary <- summary(tab_exp, showAllLevels = TRUE, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE)
-  
-  # Debugging step to check the contents of tab_exp_summary
-  print(tab_exp_summary)
-  str(tab_exp_summary)  # Print the structure of tab_exp_summary
-  
-  # Extract the matrix part of the summary and convert it to a data frame
-  tabMat_exp_matrix <- tab_exp_summary$CatTable
-  if (is.null(tabMat_exp_matrix)) {
-    print(paste("Summary CatTable is NULL for", exp_var))
-    next
-  }
-  
-  #tabMat_exp_df <- as.data.frame(tabMat_exp_matrix)
-  #print("TableMat exp df", tabMat_exp_df)  # Print the data frame to check its content
-  
-  # Check if the data frame has any rows
-  if (nrow(tabMat_exp_df) == 0) {
-    print(paste("Data frame has 0 rows for", exp_var))
-    next  # Skip to the next iteration if no rows
-  }
-  
-  # Add the row names (variable names) as the first column in the data frame
-  tab_exp_summary <- cbind(Variable = rownames(tab_exp_summary), tab_exp_summary)
-  
-  # Add a worksheet to the workbook
-  print(paste("Attempting to add worksheet for", exp_var))  # Debugging step before adding worksheet
-  addWorksheet(wb, sheetName = exp_var)
-  
-  # Debugging step to ensure the worksheet is added
-  print(paste("Added worksheet for", exp_var))
-  
-  # Write the data frame to the worksheet
-  writeData(wb, sheet = exp_var, x = tab_exp_summary, colNames = TRUE)
-  
-  # Debugging step to ensure data is written
-  print(paste("Written data for", exp_var))
-}
-
-# Save the workbook to a file
-saveWorkbook(wb, file = "table3_multiple.xlsx", overwrite = TRUE)
-
-# Debugging step to ensure workbook is saved
-print("Workbook saved")
-
-
+###################################
 ```
