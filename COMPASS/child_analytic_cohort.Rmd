@@ -354,6 +354,32 @@ consult_df = as.data.frame(table(tab_7_proc$ProcedureName))
 # looks pretty clear cut -- only one category for neph consult -- double check with John that this makes sense
 ```
 
+# DESC TABLES
+
+```{r t4}
+stage_summary
+```
+
+```{r t12}
+#sum(analysis$FLAG_kid_age)
+# 15070 out of 18904 had a T flag for kid age (between 1 and 6570 days)
+
+
+# create t1 with all available vars from/derived the data dictionary
+t1_all = table1(~ BaselineResultValue+Sex+ race + ethnicity + height_cm +weight_kg + bmi + BSA_sqm +
+                  AgeDays +Hospital + State + payorfinancialclass2  + AKICohortYN + CRRTCohortYN + AKILabYN +AKIDxYN + 
+                  DaysDOBtoEpicDeath + Death_YN + FLAG_died_admission + mortality_after_discharge,
+                data = analysis)
+
+t1_all
+
+# death stats
+table(analysis$FLAG_died_admission)
+table(analysis$mortality_after_discharge)
+```
+
+# APPENDIX TABLES
+
 ### Questions
 
 #### T2
@@ -367,25 +393,6 @@ consult_df = as.data.frame(table(tab_7_proc$ProcedureName))
 
 #### T8
 - Looks like some values are NULL even in the original dataset; missing 3303 admission dates and 2783 discharge dates. expected?
-
-# DESC TABLES
-
-```{r t12}
-#sum(analysis$FLAG_kid_age)
-# 15070 out of 18904 had a T flag for kid age (between 1 and 6570 days)
-# create t1 with all available vars from/derived the data dictionary
-t1_all = table1(~ Sex+ race + ethnicity + height_cm +weight_kg + bmi + BSA_sqm + AgeDays +Hospital + State + payorfinancialclass2  + AKICohortYN + CRRTCohortYN + AKILabYN + 
-          AKIDxYN + BaselineResultValue+ DaysDOBtoEpicDeath + Death_YN + FLAG_died_admission + mortality_after_discharge, 
-       data = analysis)
-
-t1_all
-
-# death stats
-table(analysis$FLAG_died_admission)
-table(analysis$mortality_after_discharge)
-```
-
-# APPENDIX TABLES
 
 ## TOTAL PROCEDURES, T4 LABCOMPNAMES AND PRIMARY DX
 
