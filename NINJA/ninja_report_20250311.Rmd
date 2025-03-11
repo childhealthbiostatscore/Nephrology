@@ -1,7 +1,7 @@
 ---
-title: "NINJA_reports_20250211"
+title: "NINJA_reports_20250311"
 author: "Casey Sakamoto"
-date: "2025-02-10"
+date: "2025-03-11"
 output: 
   html_document:
     toc: true
@@ -10,15 +10,15 @@ output:
     number_sections: false
 ---
 # Objectives
-- Compare timing and stages of initial AKI and highest AKI
-  - Determine which variables to use for timing and staging
-- Verify death rate variable is fixed and new death rate makes sense
-- Read in variables containing information about supratherapeutic measures and summarize ranges
+- Examinine the distribution of days from flag to initial aki
+- Examinine additional comments for supratherapeutic treatment
+- Subcategorize ST Vanc from comments
 
 ```{r dc, include = FALSE}
 library(tidyverse)
 library(knitr)
 library(haven)
+library(table1)
 # upload data d
 data_d <- read_csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
 
@@ -91,7 +91,6 @@ ranget1 = table1(~.,data=data_d_ranges %>% select(-record_id, -additional_commen
 ##################################################################################################################################
 ```
 
-# APPENDED 3/6/2025 - examining the distribution of days from flag to initial aki, examining additional comments
 ```{r, include=FALSE}
 #######################
 # SUPRATHERAPEUTIC COMMENTS DATA
@@ -163,24 +162,7 @@ st_comments_vanc = st_comments %>% filter(Field == "supratherapeutic_vancomyci")
 ###########################
 ```
 
-```{r, include = FALSE}
-# overall distn of days from flag to AKI
-hist(data_d_report$time_flag_to_AKI)
-table(data_d_report$time_flag_to_AKI)
-
-# by stage
-ggplot(data = data_d_report,
-       aes(x=initial_aki_stage,y = time_flag_to_AKI ,
-           group = initial_aki_stage, fill = initial_aki_stage)) +
-  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = 0.5, binwidth = 0.75) +
-  scale_y_continuous(breaks = seq(0,max(data_d_report$time_flag_to_AKI),by=1)) +
-  labs(x = "Initial AKI Stage", y = "Days from Flag to AKI")+ theme_minimal()
-
-table(data_d_report$time_flag_to_AKI, data_d_report$initial_aki_stage)
-
-# list of subjects with > 2 days from flag to AKI (n = 13)- only one has a different stage from peak of these, 6 have different dates from peak
-data_d_report %>% filter(time_flag_to_AKI > 3) %>% select(record_id, time_flag_to_AKI, initial_aki_stage, FLAG_Stage, FLAG_Dates)
-
+```{r, echo = FALSE}
 #hist(data_d_report$time_flag_to_peak)
 #table(data_d_report$time_flag_to_peak)
 #ggplot(data = data_d_report, aes(x = time_flag_to_AKI, y = time_flag_to_peak)) + geom_point() + theme_minimal() + geom_abline(slope = 1, intercept = 0)
@@ -188,52 +170,81 @@ data_d_report %>% filter(time_flag_to_AKI > 3) %>% select(record_id, time_flag_t
 
 # Report
 
-## Subjects with Different Stage/Dates of Initial AKI vs Peak AKI
+# Distribution of Days from Flag to Initial AKI
 
-Of 72 total subjects, 33 subjects had a different date for Initial AKI and Highest AKI. 10 subjects had both a different date and a different stage, while 1 subject had only a different stage.
+The distribution of days from the initial flag to the onset of acute kidney injury (AKI) shows that most cases occur within Day 0 - Day 2, after which the occurrence sharply declines. Beyond Day 4, only a small number of cases are observed.
 
-The Record IDs, Days from flag to the initial AKI, Days from flag to highest AKI, initial and highest AKI stages, and flags for different stages/peaks (True = different stage/peak) are displayed below for subjects with different stages/dates for their initial and highest AKI. 
-
-- Table 1: Subjects With Stage Flags list the 11 individuals with different values for initial AKI and highest AKI. 
-
-- Table 2: Subjects With Date Flags lists all individuals with day of AKI differences between initial AKI and highest AKI.
-  - Note Record_ID 20 does not appear in this table as both stage and day differed for this individual.
-
-```{r, echo=FALSE}
-# looking at stages flags
-kable(data_d_report %>% filter(FLAG_Stage ==1),col.names = labels_vector, caption = "T1: Subjects With Stage Flags")
-
-# looking at dates flags
-kable(data_d_report %>% filter(FLAG_Dates ==1),col.names = labels_vector, caption = "T2: Subjects With Date Flags")
+```{r, echo=F}
+# overall distn of days from flag to AKI
+hist(data_d_report$time_flag_to_AKI)
+table(data_d_report$time_flag_to_AKI)
 ```
 
-### Question for Dr. Stenson: Which variable should we use to summarize AKI date and AKI stage, Initial or Highest AKI?
+When broken down by Initial AKI stage, Stage 1 cases are the most common and tend to occur earlier, with the majority happening within the first three days. Stage 2 cases are also concentrated in this early period but are slightly more spread out. Stage 3 cases appear both in the early period and later, with some cases occurring as late as 14 days after flag. 
 
-## Death Variable Fix Confirm
+14 Stage 1's, 2 Stage 2's and 4 Stage 3 initial AKIs occured on the same day as the flag (Total N on Day 0 = 20). 
 
-At standing meeting it was mentioned in the Table1 the death variable factoring was likely switched.
-John changed the factoring in the analysis dataset, and the mortality rate is now 13/72 = 18%
+```{r, echo=F}
+# by stage
+# ggplot(data = data_d_report,
+#        aes(x=initial_aki_stage,y = time_flag_to_AKI ,
+#            group = initial_aki_stage, fill = initial_aki_stage)) +
+#   geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = 0.5, binwidth = 0.75) +
+#   scale_y_continuous(breaks = seq(0,max(data_d_report$time_flag_to_AKI),by=1)) +
+#   labs(x = "Initial AKI Stage", y = "Days from Flag to AKI")+ theme_minimal()
 
-### Question for Dr. Stenson: Does this new rate seem reasonable?
 
-```{r, echo=FALSE}
-# confirm death variable fixed
-kable(table(data_d$death), col.names = c("Death Y/N", "Freq"))
+# Calculate counts for each group
+group_counts <- data_d_report %>%
+  group_by(initial_aki_stage) %>%
+  summarise(n = n())
+
+# Plot with group n's
+ggplot(data = data_d_report,
+       aes(x = initial_aki_stage, y = time_flag_to_AKI,
+           group = initial_aki_stage, fill = initial_aki_stage)) +
+  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = 0.5, binwidth = 0.75) +
+  scale_y_continuous(breaks = seq(0, max(data_d_report$time_flag_to_AKI), by = 1)) +
+  labs(x = "Initial AKI Stage", y = "Days from Flag to AKI") +
+  theme_minimal() +
+  geom_text(data = group_counts, aes(x = initial_aki_stage, y = max(data_d_report$time_flag_to_AKI) + 1, 
+                                     label = paste0("n = ", n)), 
+            vjust = 0, size = 5)
+
+
+table(data_d_report$time_flag_to_AKI, data_d_report$initial_aki_stage)
+
 ```
 
-## Supratherapeutic Ranges
+# Summary of Supratherapeutic Vancomycin Levels
 
-In order to examine supratherapeutic drug levels, we were told to examine the "additional_comments" variable. This variable doesn't seem to contain supratherapeutic ranges, with a summary table listed below.
+On average, the highest vancomycin level recorded among subjects was approximately 21.4, with values ranging from 15.5 to 37.8. A small proportion of cases had levels exceeding 30, while nearly half of the cases had highest levels between 20 and 25. The first recorded vancomycin levels tended to be slightly lower, averaging around 18.6, with a majority of cases falling between 15 and 20. 5 subjects had multiple values in a comment, while 3 comments had missing info and instead only had "<4 doses no trough".
 
-### Question for Dr. Stenson: Where is this information stored in the dataset?
+```{r, echo=F}
+table1(~highest_value + highest_group + first_value + first_group + factor(multiple_values) + factor(missing_flag), data = st_comments_vanc)
+```
+
+# Appendix
+
+## Supratherapeutic Vancomycin Comments
 
 ```{r, echo=FALSE}
-# not what we are looking for with the supratherapeutic ranges?
-kable(table(data_d$additional_comments),col.names = c("Additional Comments", "Freq"))
+kable((st_comments_vanc))
+```
+
+## non-vanc comments
+
+```{r, echo=FALSE}
+kable((st_comments %>% filter(Field != "supratherapeutic_vancomyci")))
 ```
 
 
-```{r, include=FALSE}
-# look at the supratherapeutic variables from the data dictionary
-ranget1
+
+## AKI days from flag > 2
+
+- list of subjects with > 2 days from flag to AKI (n = 13)- only one has a different stage from peak of these, 6 have different dates from peak
+
+```{r}
+# list of subjects with > 2 days from flag to AKI (n = 13)- only one has a different stage from peak of these, 6 have different dates from peak
+data_d_report %>% filter(time_flag_to_AKI > 3) %>% select(record_id, time_flag_to_AKI, initial_aki_stage, FLAG_Stage, FLAG_Dates)
 ```

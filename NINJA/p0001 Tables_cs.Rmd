@@ -13,6 +13,7 @@ library(tableone)
 library(ggplot2)
 library(tidyverse)
 library(readxl)
+library(stringr)
 
 df <- read.csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
 #df <- read.csv("H:/From CBC Individual/BrintonJ/AKI/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
@@ -214,11 +215,51 @@ st_comments<- read.csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephro
 varcom_list = c("supratherapeutic_vancomyci","cyclosporine_level_300","gentamicin_trough_2", "tacrolimus_level_15")
 
 st_comments = st_comments %>% filter(Field %in% varcom_list) 
-table(st_comments$Comment, st_comments$Field)
+# table(st_comments$Comment, st_comments$Field)
 
-st_comments_v = st_comments %>% filter(Field =="supratherapeutic_vancomyci")
-st_comments_c = st_comments %>% filter(Field =="cyclosporine_level_300")
-st_comments_t = st_comments %>% filter(Field =="tacrolimus_level_15")
+# st_comments_v = st_comments %>% filter(Field =="supratherapeutic_vancomyci")
+# st_comments_c = st_comments %>% filter(Field =="cyclosporine_level_300")
+# st_comments_t = st_comments %>% filter(Field =="tacrolimus_level_15")
+
+
+# Function to process comments
+extract_values <- function(comment) {
+  # Remove dose-related phrases (e.g., "4 doses", "3/31", "5/10")
+  clean_comment <- str_replace_all(comment, "\\b\\d+\\s*doses?\\b", "") # Remove "X doses"
+  clean_comment <- str_replace_all(clean_comment, "\\b\\d+/\\d+\\b", "") # Remove date-like "X/X"
+
+  # Extract all relevant numerical values
+  numbers <- str_extract_all(clean_comment, "\\b\\d+\\.?\\d*\\b") %>% unlist() %>% as.numeric()
+  
+  highest_value <- ifelse(length(numbers) > 0, max(numbers, na.rm = TRUE), NA)
+  first_value <- ifelse(length(numbers) > 0, numbers[1], NA)
+  multiple_values <- ifelse(length(numbers) > 1, 1, 0)
+  
+  # Missing flag is 1 if no valid numbers or if explicit missing indicators are present
+  missing_flag <- ifelse(length(numbers) == 0 | str_detect(comment, "<|not detected|N/A|no levels available"), 1, 0)
+
+  # Extract goal range (handles "goal was X-Y", "goal is X-Y", and "goal X-Y")
+  goal_match <- str_match(clean_comment, "goal (?:was |is )?(\\d+)[-–](\\d+)")
+  goal_min <- ifelse(!is.na(goal_match[2]), as.numeric(goal_match[2]), NA)
+  goal_max <- ifelse(!is.na(goal_match[3]), as.numeric(goal_match[3]), NA)
+  
+  return(c(highest_value, first_value, multiple_values, missing_flag, goal_min, goal_max))
+}
+
+
+# Apply function to each comment
+st_comments <- st_comments %>%
+  rowwise() %>%
+  mutate(
+    highest_value = extract_values(Comment)[1],
+    first_value = extract_values(Comment)[2],
+    multiple_values = extract_values(Comment)[3],
+    missing_flag = extract_values(Comment)[4],
+    goal_min = extract_values(Comment)[5],
+    goal_max = extract_values(Comment)[6]
+  )
+
+
 
 ###########################
 
