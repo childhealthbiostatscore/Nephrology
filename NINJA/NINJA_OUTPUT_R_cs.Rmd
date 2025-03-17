@@ -1,25 +1,31 @@
 ---
-title: "p0001 Tables Ninja Flag and AKI"
-author: "Brinton"
-date: "5/29/2024"
-output: html_document
+title: "NINJA Output"
+author: "Casey Sakamoto"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
 ---
 
 **Table 1 Patient Characteristics*
-```{r,echo=FALSE,message=FALSE,results='hide',warning=FALSE}
+```{r,include=FALSE}
 library(devtools)
 library(Hmisc)
 library(tableone)
 library(ggplot2)
+library(ggsci)
 library(tidyverse)
 library(readxl)
+library(knitr)
+library(kableExtra)
+
 
 df <- read.csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
 #df <- read.csv("H:/From CBC Individual/BrintonJ/AKI/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
 
 df[df =="."] <- NA
 
-# CHANGE VARS FROM INITIAL TO PEAK
+# CHANGE VARS FROM peak back to initial
 
 vars_1<-c("age_year",
 "Diagnosis_Category",
@@ -72,13 +78,13 @@ df$peak_AKI_2cat = ifelse(df$highest_aki_stage_for_this == "Stage 1 (0.3 increas
 tab1<-CreateTableOne(vars = vars_1, data = df)
 # nonnormal_vars<-tab1<-CreateTableOne(vars = vars_1, strata = c("Outcome_of_interest__AKI__Y_1__N"), data = df)
 
-tab1_overall<-CreateTableOne(vars = vars_1, data = df, strata="peak_AKI_2cat", addOverall=TRUE)
+tab1_overall<-CreateTableOne(vars = vars_1, data = df, strata="initial_aki_stage_2cat", addOverall=TRUE)
 # print(tab1)
 tab1Mat_overall <- print(tab1_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, )
 tab1<-CreateTableOne(vars = vars_1, data = df)
 # nonnormal_vars<-tab1<-CreateTableOne(vars = vars_1, strata = c("Outcome_of_interest__AKI__Y_1__N"), data = df)
 
-tab1_overall<-CreateTableOne(vars = vars_1, data = df, strata="peak_AKI_2cat", addOverall=TRUE)
+tab1_overall<-CreateTableOne(vars = vars_1, data = df, strata="initial_aki_stage_2cat", addOverall=TRUE)
 # print(tab1)
 tab1Mat_overall <- print(tab1_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, )
 ## Save to a CSV file
@@ -95,7 +101,7 @@ df_vanc <- df %>%
   filter(Vancomycin_exp == "Yes")
 
 vars_2<-c("count_NTMX",
-"time_flag_to_peak",
+"time_flag_to_AKI",
 "LOS_ICU",
 "CKD_gte_stage_3",
 "Kidney_transplant",
@@ -115,7 +121,7 @@ vars_2<-c("count_NTMX",
 )
 
 nonnormal_vars<-c("count_NTMX",
-"time_flag_to_peak",
+"time_flag_to_AKI",
 "LOS_ICU",
 "CKD_gte_stage_3",
 "Kidney_transplant",
@@ -181,10 +187,10 @@ library(openxlsx)
 
 
 # List of variable names for the table
-vars_3 <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_peak", "supra_NTMX_pre", "vaso_pre")
+vars_3 <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_AKI", "supra_NTMX_pre", "vaso_pre")
 
 # List of non-normal variables for the table
-nonnormal_vars <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_peak", "supra_NTMX_pre", "vaso_pre")
+nonnormal_vars <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_AKI", "supra_NTMX_pre", "vaso_pre")
 
 ## Vector of categorical variables that need transformation
 catVars <- c("ID_NTMX_pre", "ID_NTMX_post", "supra_NTMX_pre", "vaso_pre")
@@ -202,4 +208,76 @@ write.csv(tab3Mat_overall, file ="table3_NTMX.csv")
 
 
 
+###########################
+# Stacked bars
+custom_exposure_order <- c(
+  "Vancomycin_exp",
+  "Zosyn_exp",
+  "Antivirals_exp",
+  "Contrast_exp",
+  "NSAID_exp",
+  "Ketorolac_exp",
+  "Calcineurin_inhibitors_exp"
+)
+
+# Figure DF
+df_bar = df %>% select(record_id, initial_aki_stage, Vancomycin_exp, Zosyn_exp, Antivirals_exp, Contrast_exp, NSAID_exp, Ketorolac_exp, Calcineurin_inhibitors_exp)
+
+
+# Convert from wide to long format
+exposure_rf_stacked_df <- df_bar %>%
+  pivot_longer(cols = -c(record_id, initial_aki_stage), 
+               names_to = "Exposure", 
+               values_to = "Exposure_Status") %>%
+  filter(Exposure_Status == "Yes")  # Keep only "Yes" exposures
+
+# Generate the stacked bar chart
+# Compute proportions within each exposure group
+exposure_rf_stacked_df_summary <- exposure_rf_stacked_df %>%
+  count(Exposure, initial_aki_stage) %>%
+  group_by(Exposure) %>%
+  mutate(prop = n / sum(n) * 100, label = sprintf("%.2f%%", prop))
+
+# Ensure factors are ordered for proper plotting
+exposure_rf_stacked_df_summary$Exposure <- factor(exposure_rf_stacked_df_summary$Exposure, levels = rev(custom_exposure_order))
+exposure_rf_stacked_df_summary$initial_aki_stage <- factor(exposure_rf_stacked_df_summary$initial_aki_stage, levels= c("Stage 1", "Stage 2", "Stage 3"), labels = c("Stage 1", "Stage 2", "Stage 3"))
+
+# Generate the horizontal stacked bar chart
+ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = prop, fill = initial_aki_stage)) +
+  geom_col(position = "stack", width = 0.7) +  # Use geom_col() for precomputed values
+  geom_text(aes(label = sprintf("%.1f%%", prop)), 
+            position = position_stack(vjust = 0.5),  # Center labels
+            color = "white", size = 4) +  # Adjust text size & color
+  scale_x_continuous(labels = scales::percent_format(scale = 1)) +  # Convert to percent
+  labs(title = "Proportion of Patients by Exposure and Initial AKI Stage",
+       x = "Percent of Row Frequency",
+       y = "NTMx Exposure",
+       fill = "Initial AKI Stage") +
+  theme_minimal()
+# Save the relative frequency plot
+#ggsave("fig1_rf_plot.png",width = 14, height = 6, dpi = 300, units = "in")
+
+# Generate frequency-based stacked bar chart
+ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = initial_aki_stage)) +
+  geom_col(position = "stack", width = 0.7) +  # Stacked bars with raw counts
+  geom_text(aes(label = n), 
+            position = position_stack(vjust = 0.5),  # Center labels
+            color = "white", size = 4) +  # Adjust text size & color
+  labs(title = "Number of Patients by Exposure and Initial AKI Stage",
+       x = "Patient Count",
+       y = "NTMx Exposure",
+       fill = "Initial AKI Stage") +
+  theme_minimal()
+
+# Save the frequency-based plot
+#ggsave("fig1_f_plot.png", width = 14, height = 6, dpi = 300)
+
+
+```
+
+```{r output, results='asis'}
+kbl(tab1Mat_overall, booktabs = T) %>% kable_classic()
+kbl(tab2Mat_vanc, booktabs = T) %>% kable_classic()
+kbl(tab2Mat_overall, booktabs = T) %>% kable_classic()
+kbl(tab3Mat_overall, booktabs = T) %>% kable_classic()
 ```
