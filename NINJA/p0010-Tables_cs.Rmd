@@ -1,0 +1,205 @@
+---
+title: "p0001 Tables Ninja Flag and AKI"
+author: "Brinton"
+date: "5/29/2024"
+output: html_document
+---
+
+**Table 1 Patient Characteristics*
+```{r,echo=FALSE,message=FALSE,results='hide',warning=FALSE}
+library(devtools)
+library(Hmisc)
+library(tableone)
+library(ggplot2)
+library(tidyverse)
+library(readxl)
+
+df <- read.csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
+#df <- read.csv("H:/From CBC Individual/BrintonJ/AKI/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
+
+df[df =="."] <- NA
+
+# CHANGE VARS FROM peak back to initial
+
+vars_1<-c("age_year",
+"Diagnosis_Category",
+"Admission_location",
+"Procedure",
+"CKD_gte_stage_3",
+"Kidney_transplant",
+"previous_AKI",
+"single_kidney",
+"LOS_ICU",
+"death",
+"Vancomycin_exp",
+"Zosyn_exp",
+"Antivirals_exp",
+"Contrast_exp",
+"NSAID_exp",
+"Ketorolac_exp",
+"Calcineurin_inhibitors_exp",
+"supratherapeutic_vancomyci",
+"gentamicin_trough_2",
+"tacrolimus_level_15",
+"cyclosporine_level_300"
+)
+
+nonnormal_vars<-c("age_year",
+"Diagnosis_Category",
+"Admission_location",
+"Procedure",
+"CKD_gte_stage_3",
+"Kidney_transplant",
+"previous_AKI",
+"single_kidney",
+"LOS_ICU",
+"death",
+"Vancomycin_exp",
+"Zosyn_exp",
+"Antivirals_exp",
+"Contrast_exp",
+"NSAID_exp",
+"Ketorolac_exp",
+"Calcineurin_inhibitors_exp",
+"supratherapeutic_vancomyci",
+"gentamicin_trough_2",
+"tacrolimus_level_15",
+"cyclosporine_level_300"
+)
+
+df$peak_AKI_2cat = ifelse(df$highest_aki_stage_for_this == "Stage 1 (0.3 increase in Daily Scr  or Daily Scr 1.5 - 1.9 times baseline)", "Stage 1", "Stage 2 or 3" )
+
+tab1<-CreateTableOne(vars = vars_1, data = df)
+# nonnormal_vars<-tab1<-CreateTableOne(vars = vars_1, strata = c("Outcome_of_interest__AKI__Y_1__N"), data = df)
+
+tab1_overall<-CreateTableOne(vars = vars_1, data = df, strata="initial_aki_stage_2cat", addOverall=TRUE)
+# print(tab1)
+tab1Mat_overall <- print(tab1_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, )
+tab1<-CreateTableOne(vars = vars_1, data = df)
+# nonnormal_vars<-tab1<-CreateTableOne(vars = vars_1, strata = c("Outcome_of_interest__AKI__Y_1__N"), data = df)
+
+tab1_overall<-CreateTableOne(vars = vars_1, data = df, strata="initial_aki_stage_2cat", addOverall=TRUE)
+# print(tab1)
+tab1Mat_overall <- print(tab1_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, )
+## Save to a CSV file
+write.csv(tab1Mat_overall, file ="table1_overall.csv")
+
+
+
+#new dataframe including only the individuals
+# Load the dplyr package
+library(dplyr)
+
+# Assuming data_d is your original data frame
+df_vanc <- df %>%
+  filter(Vancomycin_exp == "Yes")
+
+vars_2<-c("count_NTMX",
+"time_flag_to_AKI",
+"LOS_ICU",
+"CKD_gte_stage_3",
+"Kidney_transplant",
+"previous_AKI",
+"single_kidney",
+"highest_aki_stage_for_this",
+"pct_cre_inc",
+"dialysis_needed_after_hosp",
+"indication_for_dialysis___1",
+"indication_for_dialysis___2",
+"indication_for_dialysis___3",
+"indication_for_dialysis___4",
+"indication_for_dialysis___5",
+"ecmo_during_hospitalizatio",
+"death"
+
+)
+
+nonnormal_vars<-c("count_NTMX",
+"time_flag_to_AKI",
+"LOS_ICU",
+"CKD_gte_stage_3",
+"Kidney_transplant",
+"previous_AKI",
+"single_kidney",
+"highest_aki_stage_for_this",
+"pct_cre_inc",
+"dialysis_needed_after_hosp",
+"indication_for_dialysis___1",
+"indication_for_dialysis___2",
+"indication_for_dialysis___3",
+"indication_for_dialysis___4",
+"indication_for_dialysis___5",
+"indication_for_dialysis",
+"ecmo_during_hospitalizatio",
+"death"
+
+)
+
+## Vector of categorical variables that need transformation
+catVars <- c("dialysis_needed_after_hosp",
+"indication_for_dialysis___1",
+"indication_for_dialysis___2",
+"indication_for_dialysis___3",
+"indication_for_dialysis___4",
+"indication_for_dialysis___5",
+"indication_for_dialysis",
+"ecmo_during_hospitalizatio")
+
+
+tab2_vanc<-CreateTableOne(vars = vars_2, data = df_vanc)
+
+tab2Mat_vanc <- print(tab2_vanc, showAllLevels = TRUE, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE)
+## Save to a CSV file
+write.csv(tab2Mat_vanc, file ="table2_vanc.csv")
+
+
+# Install the haven package if you haven't already
+#install.packages("haven")
+
+# Load the haven package
+library(haven)
+
+# Import the SAS .sas7bdat file
+data <- read_sas("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/stack_t2.sas7bdat")
+
+tab2<-CreateTableOne(vars = vars_2, data = data, factorVars= catVars)
+# nonnormal_vars<-tab1<-CreateTableOne(vars = vars_1, strata = c("Outcome_of_interest__AKI__Y_1__N"), data = df)
+
+tab2_overall<-CreateTableOne(vars = vars_2, data = data, strata="NTMX", factorVars= catVars)
+# print(tab1)
+tab2Mat_overall <- print(tab2_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, factorVars= catVars)
+## Save to a CSV file
+write.csv(tab2Mat_overall, file ="table2_NTMX.csv")
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(tableone)
+library(openxlsx)
+
+
+
+# List of variable names for the table
+vars_3 <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_AKI", "supra_NTMX_pre", "vaso_pre")
+
+# List of non-normal variables for the table
+nonnormal_vars <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_AKI", "supra_NTMX_pre", "vaso_pre")
+
+## Vector of categorical variables that need transformation
+catVars <- c("ID_NTMX_pre", "ID_NTMX_post", "supra_NTMX_pre", "vaso_pre")
+
+
+tab3<-CreateTableOne(vars = vars_3, data = data, factorVars= catVars)
+# nonnormal_vars<-tab1<-CreateTableOne(vars = vars_1, strata = c("Outcome_of_interest__AKI__Y_1__N"), data = df)
+
+tab3_overall<-CreateTableOne(vars = vars_3, data = data, strata="NTMX", factorVars= catVars)
+# print(tab1)
+tab3Mat_overall <- print(tab3_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, factorVars= catVars)
+## Save to a CSV file
+write.csv(tab3Mat_overall, file ="table3_NTMX.csv")
+
+
+
+
+```

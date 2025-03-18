@@ -1,5 +1,5 @@
 ---
-title: "NINJA_reports_20250311"
+title: "NINJA Report 2025-03-11"
 author: "Casey Sakamoto"
 date: "2025-03-11"
 output: 
@@ -11,8 +11,8 @@ output:
 ---
 # Objectives
 - Examinine the distribution of days from flag to initial aki
-- Examinine additional comments for supratherapeutic treatment
-- Subcategorize ST Vanc from comments
+- Examinine/Summarize additional comments for supratherapeutic treatment
+  - Subcategorize ST Vanc comments into dose groups
 
 ```{r dc, include = FALSE}
 library(tidyverse)
@@ -168,8 +168,6 @@ st_comments_vanc = st_comments %>% filter(Field == "supratherapeutic_vancomyci")
 #ggplot(data = data_d_report, aes(x = time_flag_to_AKI, y = time_flag_to_peak)) + geom_point() + theme_minimal() + geom_abline(slope = 1, intercept = 0)
 ```
 
-# Report
-
 # Distribution of Days from Flag to Initial AKI
 
 The distribution of days from the initial flag to the onset of acute kidney injury (AKI) shows that most cases occur within Day 0 - Day 2, after which the occurrence sharply declines. Beyond Day 4, only a small number of cases are observed.
@@ -229,10 +227,12 @@ table1(~highest_value + highest_group + first_value + first_group + factor(multi
 ## Supratherapeutic Vancomycin Comments
 
 ```{r, echo=FALSE}
-kable((st_comments_vanc))
+kable((st_comments_vanc %>% select(-Field, -User)))
 ```
 
-## non-vanc comments
+## Non-Vanc Comments
+
+Subjects 57 and 80 had both a ST Vanc comment and a non-vanc comment attached to ST flags. Subject 80 also had multiple non-vanc comments.
 
 ```{r, echo=FALSE}
 kable((st_comments %>% filter(Field != "supratherapeutic_vancomyci")))
@@ -240,11 +240,35 @@ kable((st_comments %>% filter(Field != "supratherapeutic_vancomyci")))
 
 
 
-## AKI days from flag > 2
+## AKI Days From Flag = 0
 
-- list of subjects with > 2 days from flag to AKI (n = 13)- only one has a different stage from peak of these, 6 have different dates from peak
+- list of subjects with 0 days from flag to AKI (n = 20)
 
 ```{r}
-# list of subjects with > 2 days from flag to AKI (n = 13)- only one has a different stage from peak of these, 6 have different dates from peak
-data_d_report %>% filter(time_flag_to_AKI > 3) %>% select(record_id, time_flag_to_AKI, initial_aki_stage, FLAG_Stage, FLAG_Dates)
+# list of subjects with 0 days from flag to AKI (n = 20)
+data_d_report %>% filter(time_flag_to_AKI ==0) %>% select(record_id, time_flag_to_AKI, initial_aki_stage, FLAG_Stage, FLAG_Dates)
+```
+
+## AKI Distn Peak
+
+```{r}
+library(stringr)
+data_d_report$highest_aki_stage_for_this = str_sub(data_d_report$highest_aki_stage_for_this, 1,7)
+# Calculate counts for each group
+group_counts <- data_d_report %>%
+  group_by(highest_aki_stage_for_this) %>%
+  summarise(n = n())
+
+# Plot with group n's
+ggplot(data = data_d_report,
+       aes(x = highest_aki_stage_for_this, y = time_flag_to_peak,
+           group = highest_aki_stage_for_this, fill = highest_aki_stage_for_this)) +
+  geom_dotplot(binaxis = 'y', stackdir = "center", dotsize = 1, binwidth = 0.75) +
+  scale_y_continuous(breaks = seq(0, max(data_d_report$time_flag_to_peak, na.rm=T), by = 1)) +
+  labs(x = "Peak AKI Stage", y = "Days from Flag to Peak AKI") +
+  theme_minimal() +
+  geom_text(data = group_counts, aes(x = highest_aki_stage_for_this, y = max(data_d_report$time_flag_to_peak) + 1, 
+                                     label = paste0("n = ", n)), 
+            vjust = 0, size = 5)
+# n = 15 day 0's
 ```
