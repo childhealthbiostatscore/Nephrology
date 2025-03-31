@@ -7,7 +7,6 @@ output:
     df_print: paged
 ---
 
-**Table 1 Patient Characteristics*
 ```{r,include=FALSE}
 library(devtools)
 library(Hmisc)
@@ -26,6 +25,7 @@ df <- read.csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin ex
 df[df =="."] <- NA
 
 # CHANGE VARS FROM peak back to initial
+#########################################
 
 vars_1<-c("age_year",
 "Diagnosis_Category",
@@ -89,9 +89,14 @@ tab1_overall<-CreateTableOne(vars = vars_1, data = df, strata="initial_aki_stage
 tab1Mat_overall <- print(tab1_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, )
 ## Save to a CSV file
 write.csv(tab1Mat_overall, file ="table1_overall.csv")
+##################################################################################
 
-
-
+##################################################################################
+# NOTE: Table 2: Frequency of exposures to specific neprotoxins and associated AKI stage
+# information is contained in barcharts below, and mentioned worth taking out of output
+# by John. The next table 2 in the manuscript is 
+# Table 2 NAKI outcomes data by NTMx 
+##################################################################################
 #new dataframe including only the individuals
 # Load the dplyr package
 library(dplyr)
@@ -158,34 +163,92 @@ tab2Mat_vanc <- print(tab2_vanc, showAllLevels = TRUE, nonnormal = nonnormal_var
 ## Save to a CSV file
 write.csv(tab2Mat_vanc, file ="table2_vanc.csv")
 
+##################################################################################
+# TABLE 2
+# need count_ntmx
+# from sas code figures prog
+data_d = df
+# Define the function to generate the datasets
+stack_Tab2 <- function(dataset, Exp, exp_label) {
+  # Filter the dataset where the Exp column is equal to 1 (exposure event)
+  dataset <- dataset %>% 
+    filter(!!sym(Exp) == "Yes")  # Filter: where Exp = 1 (e.g., Vancomycin_exp = 1)
 
-# Install the haven package if you haven't already
-#install.packages("haven")
+  # Create new variables based on the exposure label and corresponding columns
+  dataset <- dataset %>%
+    mutate(
+      # NTMX column to store the exposure label
+      NTMX = exp_label,  # NTMX = "Vancomycin", "Zosyn", etc.
+      
+      # count_NTMX column to store count of exposure events
+      count_NTMX = !!sym(paste0("count_", exp_label)),  # count_Vancomycin, count_Zosyn, etc.
+      
+      # ID_NTMX_pre column to store the pre-exposure identifier
+      ID_NTMX_pre = !!sym(paste0(exp_label, "_exp_pre")),  # Vancomycin_exp_pre, Zosyn_exp_pre, etc.
+      
+      # ID_NTMX_post column to store the post-exposure identifier
+      ID_NTMX_post = !!sym(paste0(exp_label, "_exp_post")),  # Vancomycin_exp_post, Zosyn_exp_post, etc.
+      
+      # count_NTMX_pre column to store count of exposure events before exposure
+      count_NTMX_pre = !!sym(paste0("count_", exp_label, "_pre")),  # count_Vancomycin_pre, count_Zosyn_pre, etc.
+      
+      # count_NTMX_post column to store count of exposure events after exposure
+      count_NTMX_post = !!sym(paste0("count_", exp_label, "_post"))  # count_Vancomycin_post, count_Zosyn_post, etc.
+      
+      # supra_NTMX_pre column to store supratherapeutic exposure status before exposure
+      # supra_NTMX_pre = !!sym(paste0("Supra_", exp_label, "_pre"))  # Supra_Vancomycin_pre, Supra_Zosyn_pre, etc.
+    )  # Creating all the new variables as per the original SAS logic
+  
+  return(dataset)
+}
+# quick dataset typo issues
+data_d$Ketrolac_exp_pre = data_d$Ketorolac_exp_pre
+data_d$Ketrolac_exp_post = data_d$Ketorolac_exp_post
+data_d$Calcineurin_exp_pre = data_d$Calcineurin_inhibitors_exp_pre
+data_d$Calcineurin_exp_post = data_d$Calcineurin_inhibitors_exp_post
 
-# Load the haven package
-library(haven)
+# Apply the function to each exposure group and combine the dataset
+stack_T2 <- bind_rows(
+  stack_Tab2(data_d, "Vancomycin_exp", "Vancomycin"),
+  stack_Tab2(data_d, "Zosyn_exp", "Zosyn"),
+  stack_Tab2(data_d, "Antivirals_exp", "Antivirals"),
+  stack_Tab2(data_d, "Contrast_exp", "Contrast"),
+  stack_Tab2(data_d, "NSAID_exp", "NSAID"),
+  stack_Tab2(data_d, "Ketorolac_exp", "Ketrolac"),
+  stack_Tab2(data_d, "Calcineurin_inhibitors_exp", "Calcineurin")
+)
 
-# Import the SAS .sas7bdat file
-data <- read_sas("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/stack_t2.sas7bdat")
+# Original Vars -- need to combine the indications for dialysis
+vars_22<-c("count_NTMX",
+"time_flag_to_AKI",
+"LOS_ICU",
+"CKD_gte_stage_3",
+"Kidney_transplant",
+"previous_AKI",
+"single_kidney",
+"highest_aki_stage_for_this",
+"pct_cre_inc",
+"dialysis_needed_after_hosp",
+"indication_for_dialysis___1",
+"indication_for_dialysis___2",
+"indication_for_dialysis___3",
+"indication_for_dialysis___4",
+"indication_for_dialysis___5",
+"ecmo_during_hospitalizatio",
+"death"
+)
 
-tab2<-CreateTableOne(vars = vars_2, data = data, factorVars= catVars)
-# nonnormal_vars<-tab1<-CreateTableOne(vars = vars_1, strata = c("Outcome_of_interest__AKI__Y_1__N"), data = df)
-
-tab2_overall<-CreateTableOne(vars = vars_2, data = data, strata="NTMX", factorVars= catVars)
+# output table
+tab2_overall<-CreateTableOne(vars = vars_22, data = stack_T2, strata="NTMX", factorVars= catVars)
 # print(tab1)
 tab2Mat_overall <- print(tab2_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, factorVars= catVars)
 ## Save to a CSV file
 write.csv(tab2Mat_overall, file ="table2_NTMX.csv")
 
+##################################################################################
 
-
-# Load necessary libraries
-library(dplyr)
-library(tableone)
-library(openxlsx)
-
-
-
+##################################################################################
+# TABLE 3 Chron of Neph Exp
 # List of variable names for the table
 vars_3 <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_AKI", "supra_NTMX_pre", "vaso_pre")
 
@@ -196,19 +259,94 @@ nonnormal_vars <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX
 catVars <- c("ID_NTMX_pre", "ID_NTMX_post", "supra_NTMX_pre", "vaso_pre")
 
 
-tab3<-CreateTableOne(vars = vars_3, data = data, factorVars= catVars)
+tab3<-CreateTableOne(vars = vars_3, data = stack_T2, factorVars= catVars)
 # nonnormal_vars<-tab1<-CreateTableOne(vars = vars_1, strata = c("Outcome_of_interest__AKI__Y_1__N"), data = df)
 
-tab3_overall<-CreateTableOne(vars = vars_3, data = data, strata="NTMX", factorVars= catVars)
+tab3_overall<-CreateTableOne(vars = vars_3, data = stack_T2, strata="NTMX", factorVars= catVars)
 # print(tab1)
 tab3Mat_overall <- print(tab3_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, factorVars= catVars)
 ## Save to a CSV file
 write.csv(tab3Mat_overall, file ="table3_NTMX.csv")
+##################################################################################
+
+##################################################################################
+# Fig 2
+# Deriving supra_NTMX_pre column in stack_T2
+stack_T2 <- stack_T2 %>%
+  mutate(
+    supra_NTMX_pre = case_when(
+      NTMX == "Vancomycin" ~ Supra_Vancomycin_pre,
+      NTMX == "Calcineurin" ~ Supra_Calcineurin_pre,
+      TRUE ~ NA_real_
+    )
+  )
+
+
+# Filtering data for Vancomycin
+fig2_supra_vanc <- stack_T2 %>%
+  filter(NTMX == "Vancomycin")
+
+# Compute counts and proportions
+fig2_supra_vanc <- fig2_supra_vanc %>%
+  count(supra_NTMX_pre, initial_aki_stage) %>%
+  group_by(supra_NTMX_pre) %>%
+  mutate(percent = round(n / sum(n) * 100, 2))
+
+# Absolute frequency stacked bar chart with count labels
+p1 = ggplot(fig2_supra_vanc, aes(y = factor(supra_NTMX_pre), x = n, fill = initial_aki_stage)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 4) +
+  labs(y = "Supra NTMX Pre", x = "Count", fill = "AKI Stage") +
+  ggtitle("Number of patients by exposure to sup levels of Vanc pre NINJA flag and stage of initial aki") +
+  theme_classic()
+
+# Relative frequency stacked bar chart with percentage labels
+p2 = ggplot(fig2_supra_vanc, aes(y = factor(supra_NTMX_pre), x = percent, fill = initial_aki_stage)) +
+  geom_bar(stat = "identity", position = "fill") +
+  geom_text(aes(label = paste0(percent, "%")), 
+            position = position_fill(vjust = 0.5), size = 4) +
+  labs(y = "Supra NTMX Pre", x = "Proportion", fill = "AKI Stage") +
+  ggtitle("Percent of patients by exposure to sup levels of Vanc pre NINJA flag and stage of initial aki") +
+  theme_classic()
 
 
 
+# Filtering data for Calcineurin inhibitors
+fig2_supra_calc <- stack_T2 %>%
+  filter(NTMX == "Calcineurin")
 
-###########################
+# Compute counts and proportions
+fig2_supra_calc <- fig2_supra_calc %>%
+  count(supra_NTMX_pre, initial_aki_stage) %>%
+  group_by(supra_NTMX_pre) %>%
+  mutate(percent = round(n / sum(n) * 100, 2))
+
+# Absolute frequency stacked bar chart with count labels
+p3 = ggplot(fig2_supra_calc, aes(y = factor(supra_NTMX_pre), x = n, fill = initial_aki_stage)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 4) +
+  labs(y = "Supra NTMX Pre", x = "Count", fill = "AKI Stage") +
+  ggtitle("Number of patients by exposure to sup levels of Calc pre NINJA flag and stage of initial aki") +
+  theme_classic()
+
+# Relative frequency stacked bar chart with percentage labels
+p4 = ggplot(fig2_supra_calc, aes(y = factor(supra_NTMX_pre), x = percent, fill = initial_aki_stage)) +
+  geom_bar(stat = "identity", position = "fill") +
+  geom_text(aes(label = paste0(percent, "%")), 
+            position = position_fill(vjust = 0.5), size = 4) +
+  labs(y = "Supra NTMX Pre", x = "Proportion", fill = "AKI Stage") +
+  ggtitle("Percent of patients by exposure to sup levels of Calc pre NINJA flag and stage of initial aki") +
+  theme_classic()
+
+# Save plots 
+ggsave("st_vanc_rf.png", plot = p1, width = 12, height = 6, dpi = 300)
+ggsave("st_vanc_f.png", plot = p2, width = 12, height = 6, dpi = 300)
+ggsave("st_calc_rf.png", plot = p3, width = 12, height = 6, dpi = 300)
+ggsave("st_calc_F.png", plot = p4, width = 12, height = 6, dpi = 300)
+
+##################################################################################
+
+##################################################################################
 # Stacked bars
 custom_exposure_order <- c(
   "Vancomycin_exp",
@@ -243,7 +381,7 @@ exposure_rf_stacked_df_summary$Exposure <- factor(exposure_rf_stacked_df_summary
 exposure_rf_stacked_df_summary$initial_aki_stage <- factor(exposure_rf_stacked_df_summary$initial_aki_stage, levels= c("Stage 1", "Stage 2", "Stage 3"), labels = c("Stage 1", "Stage 2", "Stage 3"))
 
 # Generate the horizontal stacked bar chart
-ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = prop, fill = initial_aki_stage)) +
+sb1 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = prop, fill = initial_aki_stage)) +
   geom_col(position = "stack", width = 0.7) +  # Use geom_col() for precomputed values
   geom_text(aes(label = sprintf("%.1f%%", prop)), 
             position = position_stack(vjust = 0.5),  # Center labels
@@ -255,10 +393,10 @@ ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = prop, fill = initia
        fill = "Initial AKI Stage") +
   theme_minimal()
 # Save the relative frequency plot
-#ggsave("fig1_rf_plot.png",width = 14, height = 6, dpi = 300, units = "in")
+ggsave("fig1_rf_plot.png",plot = sb1,width = 14, height = 6, dpi = 300, units = "in")
 
 # Generate frequency-based stacked bar chart
-ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = initial_aki_stage)) +
+sb2 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = initial_aki_stage)) +
   geom_col(position = "stack", width = 0.7) +  # Stacked bars with raw counts
   geom_text(aes(label = n), 
             position = position_stack(vjust = 0.5),  # Center labels
@@ -270,14 +408,27 @@ ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = initial_a
   theme_minimal()
 
 # Save the frequency-based plot
-#ggsave("fig1_f_plot.png", width = 14, height = 6, dpi = 300)
+ggsave("fig1_f_plot.png",plot = sb2, width = 14, height = 6, dpi = 300)
 
 
 ```
 
 ```{r output, results='asis'}
+# Table 1 Demographics by Initial AKI Stage
 kbl(tab1Mat_overall, booktabs = T) %>% kable_classic()
-kbl(tab2Mat_vanc, booktabs = T) %>% kable_classic()
+
+# Figure 1 Rate of acute kidney injury (AKI) stages by medication exposure group 
+sb1;sb2
+
+# Note Original Table 2 John commented to remove as info was redundant with stacked bars
+# Table 3 -> 2 NAKI Outcomes Data by NTMx
 kbl(tab2Mat_overall, booktabs = T) %>% kable_classic()
+
+# Table 3 Chronology of Nephrotoxin exposure
 kbl(tab3Mat_overall, booktabs = T) %>% kable_classic()
+
+# Figure 2 Supratherapeutic drug levels correlating to AKI stages
+p1;p2;p3;p4
+
+# Alluvials?
 ```
