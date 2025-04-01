@@ -87,8 +87,7 @@ tab1<-CreateTableOne(vars = vars_1, data = df)
 tab1_overall<-CreateTableOne(vars = vars_1, data = df, strata="initial_aki_stage_2cat", addOverall=TRUE)
 # print(tab1)
 tab1Mat_overall <- print(tab1_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, )
-## Save to a CSV file
-write.csv(tab1Mat_overall, file ="table1_overall.csv")
+
 ##################################################################################
 
 ##################################################################################
@@ -160,8 +159,7 @@ catVars <- c("dialysis_needed_after_hosp",
 tab2_vanc<-CreateTableOne(vars = vars_2, data = df_vanc)
 
 tab2Mat_vanc <- print(tab2_vanc, showAllLevels = TRUE, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE)
-## Save to a CSV file
-write.csv(tab2Mat_vanc, file ="table2_vanc.csv")
+
 
 ##################################################################################
 # TABLE 2
@@ -242,8 +240,7 @@ vars_22<-c("count_NTMX",
 tab2_overall<-CreateTableOne(vars = vars_22, data = stack_T2, strata="NTMX", factorVars= catVars)
 # print(tab1)
 tab2Mat_overall <- print(tab2_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, factorVars= catVars)
-## Save to a CSV file
-write.csv(tab2Mat_overall, file ="table2_NTMX.csv")
+
 
 ##################################################################################
 
@@ -265,8 +262,7 @@ tab3<-CreateTableOne(vars = vars_3, data = stack_T2, factorVars= catVars)
 tab3_overall<-CreateTableOne(vars = vars_3, data = stack_T2, strata="NTMX", factorVars= catVars)
 # print(tab1)
 tab3Mat_overall <- print(tab3_overall, nonnormal = nonnormal_vars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE, factorVars= catVars)
-## Save to a CSV file
-write.csv(tab3Mat_overall, file ="table3_NTMX.csv")
+
 ##################################################################################
 
 ##################################################################################
@@ -338,11 +334,6 @@ p4 = ggplot(fig2_supra_calc, aes(y = factor(supra_NTMX_pre), x = percent, fill =
   ggtitle("Percent of patients by exposure to sup levels of Calc pre NINJA flag and stage of initial aki") +
   theme_classic()
 
-# Save plots 
-ggsave("st_vanc_rf.png", plot = p1, width = 12, height = 6, dpi = 300)
-ggsave("st_vanc_f.png", plot = p2, width = 12, height = 6, dpi = 300)
-ggsave("st_calc_rf.png", plot = p3, width = 12, height = 6, dpi = 300)
-ggsave("st_calc_F.png", plot = p4, width = 12, height = 6, dpi = 300)
 
 ##################################################################################
 
@@ -392,8 +383,7 @@ sb1 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = prop, fill = 
        y = "NTMx Exposure",
        fill = "Initial AKI Stage") +
   theme_minimal()
-# Save the relative frequency plot
-ggsave("fig1_rf_plot.png",plot = sb1,width = 14, height = 6, dpi = 300, units = "in")
+
 
 # Generate frequency-based stacked bar chart
 sb2 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = initial_aki_stage)) +
@@ -407,10 +397,17 @@ sb2 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = ini
        fill = "Initial AKI Stage") +
   theme_minimal()
 
-# Save the frequency-based plot
-ggsave("fig1_f_plot.png",plot = sb2, width = 14, height = 6, dpi = 300)
+##################################################################################
+
+##################################################################################
+# Alluvial plots
+# data prep for the laneplots/alluvials -- gona import data_day_exp from the lane plots generated in p0005
+# should be similar to use for alluvial purposes
 
 
+##################################################################################
+
+##################################################################################
 ```
 
 ```{r output, results='asis'}
@@ -431,4 +428,26 @@ kbl(tab3Mat_overall, booktabs = T) %>% kable_classic()
 p1;p2;p3;p4
 
 # Alluvials?
+```
+
+```{r, include=FALSE}
+# # Save tables and images
+# # Save the frequency-based plot
+# ggsave("fig1_f_plot.png",plot = sb2, width = 14, height = 6, dpi = 300)
+# # Save the relative frequency plot
+# ggsave("fig1_rf_plot.png",plot = sb1,width = 14, height = 6, dpi = 300, units = "in")
+# # Save plots 
+# ggsave("st_vanc_rf.png", plot = p1, width = 12, height = 6, dpi = 300)
+# ggsave("st_vanc_f.png", plot = p2, width = 12, height = 6, dpi = 300)
+# ggsave("st_calc_rf.png", plot = p3, width = 12, height = 6, dpi = 300)
+# ggsave("st_calc_F.png", plot = p4, width = 12, height = 6, dpi = 300)
+# 
+# ## Save to a CSV file
+# write.csv(tab3Mat_overall, file ="table3_NTMX.csv")
+# ## Save to a CSV file
+# write.csv(tab2Mat_overall, file ="table2_NTMX.csv")
+# ## Save to a CSV file
+# #write.csv(tab2Mat_vanc, file ="table2_vanc.csv")
+# ## Save to a CSV file
+# write.csv(tab1Mat_overall, file ="table1_overall.csv")
 ```

@@ -16,7 +16,11 @@ The purpose of this program is to:
 
 /*CODE TAKEN FROM P0001 SCRATCH*/
 /*Import data*/
+%include "S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/NINJAPICU_DATA_NOHDRS_2024-05-21_1344.csv";
+
+/*
 %include "H:/From CBC Individual/BrintonJ/AKI/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/NINJAPICU_SAS_2024-05-21_1344.sas";
+*/
 /*
 Primary Outcome:?- The prevalence of specific nephrotoxin exposures among ICU patients that develop NTMx-AKI
 */
@@ -409,7 +413,7 @@ run;
 /*CREATE THE PLOT SO THAT THE MEDICATIONS LEDGEND IS INCLUDED*/
 PROC SORT data=data_day_exp; by highest_aki_stage_for_this Vancomycin_exp; RUN;
 
-ods rtf file="H:\From CBC Individual\BrintonJ\AKI\2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort\text\laneplots.rtf" style=journal;
+ods rtf file="S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/laneplots.rtf" style=journal;
 proc sgplot data=data_day_exp;
 by highest_aki_stage_for_this Vancomycin_exp;
     /* Horizontal bar plot */
@@ -493,7 +497,7 @@ IF sum_exp <3;
 RUN;
 
 proc export data=check
-    outfile="H:\From CBC Individual\BrintonJ\AKI\2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort\data\ExposureCheck.csv"
+    outfile="S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/ExposureCheck.csv"
     dbms=csv
     replace;
 run;
@@ -735,7 +739,7 @@ ACE_ARB_exp ynf.
 RUN;
 /*Export data_e for specific exposures tables in Table 3*/
 proc export data=work.data_e
-    outfile="H:/From CBC Individual/BrintonJ/AKI/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_e.csv" 
+    outfile="S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_e.csv" 
     dbms=csv 
     replace;
 run;
