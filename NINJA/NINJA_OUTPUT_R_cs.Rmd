@@ -403,6 +403,7 @@ sb2 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = ini
 # Alluvial plots
 # data prep for the laneplots/alluvials -- gona import data_day_exp from the lane plots generated in p0005
 # should be similar to use for alluvial purposes
+data_day_exp <- read.csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/dde.csv")
 
 
 ##################################################################################

@@ -16,7 +16,7 @@ The purpose of this program is to:
 
 /*CODE TAKEN FROM P0001 SCRATCH*/
 /*Import data*/
-%include "S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/NINJAPICU_DATA_NOHDRS_2024-05-21_1344.csv";
+%include "S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/redcap.csv";
 
 /*
 %include "H:/From CBC Individual/BrintonJ/AKI/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/NINJAPICU_SAS_2024-05-21_1344.sas";
@@ -338,6 +338,12 @@ day_64_Valsartan) +0.08 +0.08 +0.08 +0.08 +0.08 +0.08;
 
 line_end = 10;
 RUN;
+
+proc export data=data_day_exp
+    outfile="S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/dde.csv"
+    dbms=csv
+    replace;
+run;
 
 
 PROC PRINT data=data_day_exp (obs=5);
