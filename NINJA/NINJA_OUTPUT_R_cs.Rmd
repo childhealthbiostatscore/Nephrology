@@ -17,7 +17,7 @@ library(tidyverse)
 library(readxl)
 library(knitr)
 library(kableExtra)
-
+library(ggalluvial)
 
 df <- read.csv("S:/Brinton/Nephrology/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
 #df <- read.csv("H:/From CBC Individual/BrintonJ/AKI/2024.03.06 Shih NINJA - RAI mephrotoxin exposures in ICU and clincal course retrospective cohort/data/data_d.csv")
@@ -467,15 +467,68 @@ data_d$day_Vancomycin_exp <- mapply(first_exposure_day, data_d$ntmx_3_days_prior
                                      data_d$ntmx_day_of_2___40, data_d$ntmx_day_of_3___40, data_d$ntmx_day_of_4___40, 
                                      data_d$ntmx_day_of_5___40, data_d$ntmx_day_of_6___40, data_d$ntmx_day_of_7___40)
 
+# vanc exposure df
+vanc_exp_df = data_d %>% select(record_id, day_Vancomycin_exp, ntmx_3_days_prior___40,ntmx_2_days_prior___40, 
+                                     ntmx_1_days_prior___40, ntmx_day_of___40, ntmx_day_of_1___40, 
+                                     ntmx_day_of_2___40, ntmx_day_of_3___40, ntmx_day_of_4___40, 
+                                     ntmx_day_of_5___40, ntmx_day_of_6___40, ntmx_day_of_7___40) %>% filter(!is.na(day_Vancomycin_exp)) %>%
+  select(-day_Vancomycin_exp)
 
-redcap$day_Zosyn_exp <- mapply(first_exposure_day, redcap$ntmx_3_days_prior___33, redcap$ntmx_2_days_prior___33, 
-                                redcap$ntmx_1_days_prior___33, redcap$ntmx_day_of___33, redcap$ntmx_day_of_1___33, 
-                                redcap$ntmx_day_of_2___33, redcap$ntmx_day_of_3___33, redcap$ntmx_day_of_4___33, 
-                                redcap$ntmx_day_of_5___33, redcap$ntmx_day_of_6___33, redcap$ntmx_day_of_7___33)
-
-# Repeat for other exposure groups...
 
 
+# long
+# Reshape the dataset to long format
+vanc_long_df <- vanc_exp_df %>%
+  pivot_longer(cols = starts_with("ntmx"),
+               names_to = "timepoint",
+               values_to = "status")
+
+
+vanc_long_df = vanc_long_df %>% mutate(tp = case_when(timepoint == "ntmx_3_days_prior___40" ~ -3,
+                                                             timepoint == "ntmx_2_days_prior___40" ~ -2,
+                                                             timepoint == "ntmx_1_days_prior___40" ~ -1,
+                                                             timepoint == "ntmx_day_of___40" ~ 0,
+                                                             timepoint == "ntmx_day_of_1___40" ~ 1,
+                                                             timepoint == "ntmx_day_of_2___40" ~ 2,
+                                                             timepoint == "ntmx_day_of_3___40" ~ 3,
+                                                             timepoint == "ntmx_day_of_4___40" ~ 4,
+                                                             timepoint == "ntmx_day_of_5___40" ~ 5,
+                                                             timepoint == "ntmx_day_of_6___40" ~ 6,
+                                                             timepoint == "ntmx_day_of_7___40" ~ 7))
+
+order_df <- vanc_long_df %>%
+  arrange(record_id, tp) %>%  # Ensure chronological order
+  mutate(first_letter = substr(status, 1, 1)) %>%  # Extract first letter
+  group_by(record_id) %>%
+  summarize(order = paste(first_letter, collapse = ""), .groups = "drop")
+
+vanc_long_df = left_join(vanc_long_df, order_df)
+vanc_long_df$freq = 1
+
+vanc_long_df = left_join(vanc_long_df, data_d %>% select(record_id, initial_aki_stage, initial_aki_stage_2cat))
+# alluvial plot
+vanc_alluvial = ggplot(vanc_long_df,
+       aes(x = tp, stratum = status, alluvium = record_id,
+           fill = status, label = status, y = freq)) +
+  geom_flow() + scale_x_continuous(breaks = -3:7)+ 
+  geom_stratum(aes(fill = status)) +
+  geom_label(aes(fill = status),stat = "stratum", size = 3) +
+  theme(legend.position = "none") +
+  ggtitle("Vancomycin Exposure")
+
+vanc_alluvial
+# alluvial plot by iniitial aki stage
+vanc_alluvial2 = ggplot(vanc_long_df,
+       aes(x = tp, stratum = status, alluvium = record_id,
+           fill = initial_aki_stage_2cat, label = status, y = freq)) +
+  geom_flow() + scale_x_continuous(breaks = -3:7)+ 
+  geom_stratum(aes(fill = status)) +
+  geom_label(aes(fill = status),stat = "stratum", size = 3) +
+  ggtitle("Vancomycin Exposure by initial AKI stage")
+
+# table
+vanc_exp_t = vanc_long_df %>% group_by(tp,status) %>% summarise(freq = n(),
+                                                    rf = freq/56)
 ##################################################################################
 
 ##################################################################################
@@ -483,22 +536,24 @@ redcap$day_Zosyn_exp <- mapply(first_exposure_day, redcap$ntmx_3_days_prior___33
 
 ```{r output, results='asis'}
 # Table 1 Demographics by Initial AKI Stage
-kbl(tab1Mat_overall, booktabs = T) %>% kable_classic()
+kbl(tab1Mat_overall, booktabs = T) %>% kable_classic()%>% kable_styling("striped")
 
 # Figure 1 Rate of acute kidney injury (AKI) stages by medication exposure group 
 sb1;sb2
 
 # Note Original Table 2 John commented to remove as info was redundant with stacked bars
 # Table 3 -> 2 NAKI Outcomes Data by NTMx
-kbl(tab2Mat_overall, booktabs = T) %>% kable_classic()
+kbl(tab2Mat_overall, booktabs = T) %>% kable_classic()%>% kable_styling("striped")
 
 # Table 3 Chronology of Nephrotoxin exposure
-kbl(tab3Mat_overall, booktabs = T) %>% kable_classic()
+kbl(tab3Mat_overall, booktabs = T) %>% kable_classic()%>% kable_styling("striped")
 
 # Figure 2 Supratherapeutic drug levels correlating to AKI stages
 p1;p2;p3;p4
 
-# Alluvials?
+# Alluvials
+vanc_alluvial;vanc_alluvial2
+kbl(vanc_exp_t, booktabs = T) %>% kable_classic() %>% kable_styling("striped")
 ```
 
 ```{r, include=FALSE}
@@ -521,4 +576,7 @@ p1;p2;p3;p4
 # #write.csv(tab2Mat_vanc, file ="table2_vanc.csv")
 # ## Save to a CSV file
 # write.csv(tab1Mat_overall, file ="table1_overall.csv")
+
+# ggsave("alluvial_vanc.png", plot = vanc_alluvial, width = 12, height = 6, dpi = 300)
+# ggsave("alluvial_vanc_stage.png", plot = vanc_alluvial2, width = 12, height = 6, dpi = 300)
 ```
