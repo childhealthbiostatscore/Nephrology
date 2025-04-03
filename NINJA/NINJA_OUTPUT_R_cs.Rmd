@@ -402,7 +402,78 @@ sb2 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = ini
 ##################################################################################
 # Alluvial plots
 # data prep for the laneplots/alluvials -- gona import data_day_exp from the lane plots generated in p0005
-# should be similar to use for alluvial purposes
+# Assuming 'play' is your data frame in R
+# Function to determine the first day of exposure for a drug
+# Create the exposure indicator columns
+data_d$Vancomycin_exp <- ifelse(data_d$count_40_Vancomycin != 0, 1, 0)
+data_d$Zosyn_exp <- ifelse(data_d$count_33_Zosyn_Piperacillin != 0, 1, 0)
+data_d$Aminoglycosides_exp <- ifelse(data_d$count_26_Gentamicin != 0 | data_d$count_38_Tobramycin != 0, 1, 0)
+data_d$Amphotericin_exp <- ifelse(data_d$count_12_Ambisome != 0, 1, 0)
+data_d$Antivirals_exp <- ifelse(
+  data_d$count_48_Acyclovir != 0 | data_d$count_19_Cidofovir != 0 | 
+    data_d$count_25_Ganciclovir != 0 | data_d$count_63_Tenofovir != 0 | 
+    data_d$count_45_Valganciclovir != 0 | data_d$count_46_Valacyclovir != 0, 1, 0
+)
+data_d$Contrast_exp <- ifelse(data_d$count_24_Gado_Derivatives != 0 | data_d$count_28_Iodinated_CA != 0, 1, 0)
+data_d$NSAID_exp <- ifelse(data_d$count_27_Ibuprofen != 0, 1, 0)
+data_d$Ketorolac_exp <- ifelse(data_d$count_47_Ketorolac != 0, 1, 0)
+data_d$Celecoxib_exp <- ifelse(data_d$count_51_Celecoxib != 0, 1, 0)
+data_d$Calcineurin_inhibitors_exp <- ifelse(
+  data_d$count_36_Tacrolimus != 0 | data_d$count_21_Cyclosporine != 0, 1, 0
+)
+data_d$Sirolimus_exp <- ifelse(data_d$count_34_Sirolimus != 0, 1, 0)
+data_d$AED_exp <- ifelse(data_d$count_39_Topiramate != 0 | data_d$count_41_Zonisamide != 0, 1, 0)
+data_d$ACE_ARB_exp <- ifelse(
+  data_d$count_14_Captopril != 0 | data_d$count_42_Enalapril != 0 | 
+    data_d$count_53_Enalaprilat != 0 | data_d$count_43_Lisinopril != 0 | 
+    data_d$count_55_Losartan != 0 | data_d$count_64_Valsartan != 0, 1, 0
+)
+
+# Function to determine the first day of exposure for a drug
+first_exposure_day <- function(ntmx_3, ntmx_2, ntmx_1, ntmx_0, ntmx_1d, ntmx_2d, ntmx_3d, ntmx_4d, ntmx_5d, ntmx_6d, ntmx_7d) {
+  # Convert factors to logical TRUE/FALSE based on "Checked" level
+  ntmx_3 <- ntmx_3 == "Checked"
+  ntmx_2 <- ntmx_2 == "Checked"
+  ntmx_1 <- ntmx_1 == "Checked"
+  ntmx_0 <- ntmx_0 == "Checked"
+  ntmx_1d <- ntmx_1d == "Checked"
+  ntmx_2d <- ntmx_2d == "Checked"
+  ntmx_3d <- ntmx_3d == "Checked"
+  ntmx_4d <- ntmx_4d == "Checked"
+  ntmx_5d <- ntmx_5d == "Checked"
+  ntmx_6d <- ntmx_6d == "Checked"
+  ntmx_7d <- ntmx_7d == "Checked"
+
+  # Determine first day of exposure
+  if (ntmx_3) return(-3)
+  if (ntmx_2) return(-2)
+  if (ntmx_1) return(-1)
+  if (ntmx_0) return(0)
+  if (ntmx_1d) return(1)
+  if (ntmx_2d) return(2)
+  if (ntmx_3d) return(3)
+  if (ntmx_4d) return(4)
+  if (ntmx_5d) return(5)
+  if (ntmx_6d) return(6)
+  if (ntmx_7d) return(7)
+  
+  return(NA) # If no exposure was found
+}
+
+
+# Apply first_exposure_day function
+data_d$day_Vancomycin_exp <- mapply(first_exposure_day, data_d$ntmx_3_days_prior___40, data_d$ntmx_2_days_prior___40, 
+                                     data_d$ntmx_1_days_prior___40, data_d$ntmx_day_of___40, data_d$ntmx_day_of_1___40, 
+                                     data_d$ntmx_day_of_2___40, data_d$ntmx_day_of_3___40, data_d$ntmx_day_of_4___40, 
+                                     data_d$ntmx_day_of_5___40, data_d$ntmx_day_of_6___40, data_d$ntmx_day_of_7___40)
+
+
+redcap$day_Zosyn_exp <- mapply(first_exposure_day, redcap$ntmx_3_days_prior___33, redcap$ntmx_2_days_prior___33, 
+                                redcap$ntmx_1_days_prior___33, redcap$ntmx_day_of___33, redcap$ntmx_day_of_1___33, 
+                                redcap$ntmx_day_of_2___33, redcap$ntmx_day_of_3___33, redcap$ntmx_day_of_4___33, 
+                                redcap$ntmx_day_of_5___33, redcap$ntmx_day_of_6___33, redcap$ntmx_day_of_7___33)
+
+# Repeat for other exposure groups...
 
 
 ##################################################################################
