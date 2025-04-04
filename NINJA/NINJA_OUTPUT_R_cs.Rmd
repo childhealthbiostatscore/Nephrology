@@ -41,8 +41,7 @@ vars_1<-c("age_year",
 "Zosyn_exp",
 "Antivirals_exp",
 "Contrast_exp",
-"NSAID_exp",
-"Ketorolac_exp",
+"NSAID_ketorolac_exp",
 "Calcineurin_inhibitors_exp",
 "supratherapeutic_vancomyci",
 "gentamicin_trough_2",
@@ -64,8 +63,7 @@ nonnormal_vars<-c("age_year",
 "Zosyn_exp",
 "Antivirals_exp",
 "Contrast_exp",
-"NSAID_exp",
-"Ketorolac_exp",
+"NSAID_ketorolac_exp",
 "Calcineurin_inhibitors_exp",
 "supratherapeutic_vancomyci",
 "gentamicin_trough_2",
@@ -74,6 +72,7 @@ nonnormal_vars<-c("age_year",
 )
 
 df$peak_AKI_2cat = ifelse(df$highest_aki_stage_for_this == "Stage 1 (0.3 increase in Daily Scr  or Daily Scr 1.5 - 1.9 times baseline)", "Stage 1", "Stage 2 or 3" )
+df$NSAID_ketorolac_exp = ifelse(df$Ketorolac_exp == "Yes" | df$NSAID_exp == "Yes", "Yes", "No")
 
 tab1<-CreateTableOne(vars = vars_1, data = df)
 # nonnormal_vars<-tab1<-CreateTableOne(vars = vars_1, strata = c("Outcome_of_interest__AKI__Y_1__N"), data = df)
@@ -99,7 +98,11 @@ tab1Mat_overall <- print(tab1_overall, nonnormal = nonnormal_vars, quote = FALSE
 #new dataframe including only the individuals
 # Load the dplyr package
 library(dplyr)
-
+df$dialysis = ifelse(df$indication_for_dialysis___1 == "Checked" | 
+                     df$indication_for_dialysis___2 == "Checked" |
+                     df$indication_for_dialysis___3 == "Checked" |
+                     df$indication_for_dialysis___4 == "Checked" |
+                     df$indication_for_dialysis___5 == "Checked" , "Any Dialysis", "No Dialysis")
 # Assuming data_d is your original data frame
 df_vanc <- df %>%
   filter(Vancomycin_exp == "Yes")
@@ -114,11 +117,7 @@ vars_2<-c("count_NTMX",
 "highest_aki_stage_for_this",
 "pct_cre_inc",
 "dialysis_needed_after_hosp",
-"indication_for_dialysis___1",
-"indication_for_dialysis___2",
-"indication_for_dialysis___3",
-"indication_for_dialysis___4",
-"indication_for_dialysis___5",
+"dialysis",
 "ecmo_during_hospitalizatio",
 "death"
 
@@ -134,11 +133,7 @@ nonnormal_vars<-c("count_NTMX",
 "highest_aki_stage_for_this",
 "pct_cre_inc",
 "dialysis_needed_after_hosp",
-"indication_for_dialysis___1",
-"indication_for_dialysis___2",
-"indication_for_dialysis___3",
-"indication_for_dialysis___4",
-"indication_for_dialysis___5",
+"dialysis",
 "indication_for_dialysis",
 "ecmo_during_hospitalizatio",
 "death"
@@ -147,11 +142,7 @@ nonnormal_vars<-c("count_NTMX",
 
 ## Vector of categorical variables that need transformation
 catVars <- c("dialysis_needed_after_hosp",
-"indication_for_dialysis___1",
-"indication_for_dialysis___2",
-"indication_for_dialysis___3",
-"indication_for_dialysis___4",
-"indication_for_dialysis___5",
+"dialysis",
 "indication_for_dialysis",
 "ecmo_during_hospitalizatio")
 
@@ -205,14 +196,19 @@ data_d$Ketrolac_exp_post = data_d$Ketorolac_exp_post
 data_d$Calcineurin_exp_pre = data_d$Calcineurin_inhibitors_exp_pre
 data_d$Calcineurin_exp_post = data_d$Calcineurin_inhibitors_exp_post
 
+# combine keterolac and nsaid
+data_d$count_NSAID_ketorolac = data_d$count_NSAID + data_d$count_Ketrolac
+data_d$NSAID_ketorolac_exp_pre = ifelse(data_d$Ketorolac_exp_pre == "Yes" | data_d$NSAID_exp_pre  == "Yes", 1, 0)
+data_d$NSAID_ketorolac_exp_post = ifelse(data_d$Ketorolac_exp_post == "Yes" | data_d$NSAID_exp_post == "Yes", 1, 0)
+data_d$count_NSAID_ketorolac_pre = data_d$count_NSAID_pre + data_d$count_Ketrolac_pre
+data_d$count_NSAID_ketorolac_post = data_d$count_NSAID_post + data_d$count_Ketrolac_post
 # Apply the function to each exposure group and combine the dataset
 stack_T2 <- bind_rows(
   stack_Tab2(data_d, "Vancomycin_exp", "Vancomycin"),
   stack_Tab2(data_d, "Zosyn_exp", "Zosyn"),
   stack_Tab2(data_d, "Antivirals_exp", "Antivirals"),
   stack_Tab2(data_d, "Contrast_exp", "Contrast"),
-  stack_Tab2(data_d, "NSAID_exp", "NSAID"),
-  stack_Tab2(data_d, "Ketorolac_exp", "Ketrolac"),
+  stack_Tab2(data_d, "NSAID_ketorolac_exp", "NSAID_ketorolac"),
   stack_Tab2(data_d, "Calcineurin_inhibitors_exp", "Calcineurin")
 )
 
@@ -227,11 +223,7 @@ vars_22<-c("count_NTMX",
 "highest_aki_stage_for_this",
 "pct_cre_inc",
 "dialysis_needed_after_hosp",
-"indication_for_dialysis___1",
-"indication_for_dialysis___2",
-"indication_for_dialysis___3",
-"indication_for_dialysis___4",
-"indication_for_dialysis___5",
+"dialysis",
 "ecmo_during_hospitalizatio",
 "death"
 )
@@ -344,13 +336,12 @@ custom_exposure_order <- c(
   "Zosyn_exp",
   "Antivirals_exp",
   "Contrast_exp",
-  "NSAID_exp",
-  "Ketorolac_exp",
+  "NSAID_ketorolac_exp",
   "Calcineurin_inhibitors_exp"
 )
 
 # Figure DF
-df_bar = df %>% select(record_id, initial_aki_stage, Vancomycin_exp, Zosyn_exp, Antivirals_exp, Contrast_exp, NSAID_exp, Ketorolac_exp, Calcineurin_inhibitors_exp)
+df_bar = df %>% select(record_id, initial_aki_stage, Vancomycin_exp, Zosyn_exp, Antivirals_exp, Contrast_exp, NSAID_ketorolac_exp, Calcineurin_inhibitors_exp)
 
 
 # Convert from wide to long format
@@ -382,7 +373,7 @@ sb1 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = prop, fill = 
        x = "Percent of Row Frequency",
        y = "NTMx Exposure",
        fill = "Initial AKI Stage") +
-  theme_minimal()
+  theme_classic()
 
 
 # Generate frequency-based stacked bar chart
@@ -395,7 +386,7 @@ sb2 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = ini
        x = "Patient Count",
        y = "NTMx Exposure",
        fill = "Initial AKI Stage") +
-  theme_minimal()
+  theme_classic()
 
 ##################################################################################
 
@@ -500,7 +491,7 @@ order_df <- vanc_long_df %>%
   arrange(record_id, tp) %>%  # Ensure chronological order
   mutate(first_letter = substr(status, 1, 1)) %>%  # Extract first letter
   group_by(record_id) %>%
-  summarize(order = paste(first_letter, collapse = ""), .groups = "drop")
+  summarise(order = paste(first_letter, collapse = ""), .groups = "drop")
 
 vanc_long_df = left_join(vanc_long_df, order_df)
 vanc_long_df$freq = 1
@@ -514,9 +505,9 @@ vanc_alluvial = ggplot(vanc_long_df,
   geom_stratum(aes(fill = status)) +
   geom_label(aes(fill = status),stat = "stratum", size = 3) +
   theme(legend.position = "none") +
-  ggtitle("Vancomycin Exposure")
+  ggtitle("Vancomycin Exposure") + theme_classic()
 
-vanc_alluvial
+# vanc_alluvial
 # alluvial plot by iniitial aki stage
 vanc_alluvial2 = ggplot(vanc_long_df,
        aes(x = tp, stratum = status, alluvium = record_id,
@@ -524,7 +515,7 @@ vanc_alluvial2 = ggplot(vanc_long_df,
   geom_flow() + scale_x_continuous(breaks = -3:7)+ 
   geom_stratum(aes(fill = status)) +
   geom_label(aes(fill = status),stat = "stratum", size = 3) +
-  ggtitle("Vancomycin Exposure by initial AKI stage")
+  ggtitle("Vancomycin Exposure by initial AKI stage") + theme_classic()
 
 # table
 vanc_exp_t = vanc_long_df %>% group_by(tp,status) %>% summarise(freq = n(),
@@ -559,24 +550,24 @@ kbl(vanc_exp_t, booktabs = T) %>% kable_classic() %>% kable_styling("striped")
 ```{r, include=FALSE}
 # # Save tables and images
 # # Save the frequency-based plot
-# ggsave("fig1_f_plot.png",plot = sb2, width = 14, height = 6, dpi = 300)
+ggsave("fig1_f_plot.png",plot = sb2, width = 14, height = 6, dpi = 300)
 # # Save the relative frequency plot
-# ggsave("fig1_rf_plot.png",plot = sb1,width = 14, height = 6, dpi = 300, units = "in")
+ggsave("fig1_rf_plot.png",plot = sb1,width = 14, height = 6, dpi = 300, units = "in")
 # # Save plots 
-# ggsave("st_vanc_rf.png", plot = p1, width = 12, height = 6, dpi = 300)
-# ggsave("st_vanc_f.png", plot = p2, width = 12, height = 6, dpi = 300)
-# ggsave("st_calc_rf.png", plot = p3, width = 12, height = 6, dpi = 300)
-# ggsave("st_calc_F.png", plot = p4, width = 12, height = 6, dpi = 300)
+ggsave("st_vanc_rf.png", plot = p1, width = 12, height = 6, dpi = 300)
+ggsave("st_vanc_f.png", plot = p2, width = 12, height = 6, dpi = 300)
+ggsave("st_calc_rf.png", plot = p3, width = 12, height = 6, dpi = 300)
+ggsave("st_calc_F.png", plot = p4, width = 12, height = 6, dpi = 300)
 # 
 # ## Save to a CSV file
-# write.csv(tab3Mat_overall, file ="table3_NTMX.csv")
+write.csv(tab3Mat_overall, file ="table3_NTMX.csv")
 # ## Save to a CSV file
-# write.csv(tab2Mat_overall, file ="table2_NTMX.csv")
+write.csv(tab2Mat_overall, file ="table2_NTMX.csv")
 # ## Save to a CSV file
-# #write.csv(tab2Mat_vanc, file ="table2_vanc.csv")
+write.csv(tab2Mat_vanc, file ="table2_vanc.csv")
 # ## Save to a CSV file
-# write.csv(tab1Mat_overall, file ="table1_overall.csv")
+write.csv(tab1Mat_overall, file ="table1_overall.csv")
 
-# ggsave("alluvial_vanc.png", plot = vanc_alluvial, width = 12, height = 6, dpi = 300)
-# ggsave("alluvial_vanc_stage.png", plot = vanc_alluvial2, width = 12, height = 6, dpi = 300)
+ggsave("alluvial_vanc.png", plot = vanc_alluvial, width = 12, height = 6, dpi = 300)
+ggsave("alluvial_vanc_stage.png", plot = vanc_alluvial2, width = 12, height = 6, dpi = 300)
 ```
