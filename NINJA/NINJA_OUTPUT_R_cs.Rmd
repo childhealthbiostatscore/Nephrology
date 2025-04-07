@@ -198,8 +198,8 @@ data_d$Calcineurin_exp_post = data_d$Calcineurin_inhibitors_exp_post
 
 # combine keterolac and nsaid
 data_d$count_NSAID_ketorolac = data_d$count_NSAID + data_d$count_Ketrolac
-data_d$NSAID_ketorolac_exp_pre = ifelse(data_d$Ketorolac_exp_pre == "Yes" | data_d$NSAID_exp_pre  == "Yes", 1, 0)
-data_d$NSAID_ketorolac_exp_post = ifelse(data_d$Ketorolac_exp_post == "Yes" | data_d$NSAID_exp_post == "Yes", 1, 0)
+data_d$NSAID_ketorolac_exp_pre = ifelse(data_d$Ketorolac_exp_pre == 1 | data_d$NSAID_exp_pre  == 1, 1, 0)
+data_d$NSAID_ketorolac_exp_post = ifelse(data_d$Ketorolac_exp_post == 1 | data_d$NSAID_exp_post == 1, 1, 0)
 data_d$count_NSAID_ketorolac_pre = data_d$count_NSAID_pre + data_d$count_Ketrolac_pre
 data_d$count_NSAID_ketorolac_post = data_d$count_NSAID_post + data_d$count_Ketrolac_post
 # Apply the function to each exposure group and combine the dataset
@@ -239,13 +239,13 @@ tab2Mat_overall <- print(tab2_overall, nonnormal = nonnormal_vars, quote = FALSE
 ##################################################################################
 # TABLE 3 Chron of Neph Exp
 # List of variable names for the table
-vars_3 <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_AKI", "supra_NTMX_pre", "vaso_pre")
+vars_3 <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_AKI",  "vaso_pre")
 
 # List of non-normal variables for the table
-nonnormal_vars <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_AKI", "supra_NTMX_pre", "vaso_pre")
+nonnormal_vars <- c("ID_NTMX_pre", "ID_NTMX_post", "count_NTMX_pre", "count_NTMX_post", "time_flag_to_AKI",  "vaso_pre")
 
 ## Vector of categorical variables that need transformation
-catVars <- c("ID_NTMX_pre", "ID_NTMX_post", "supra_NTMX_pre", "vaso_pre")
+catVars <- c("ID_NTMX_pre", "ID_NTMX_post", "vaso_pre")
 
 
 tab3<-CreateTableOne(vars = vars_3, data = stack_T2, factorVars= catVars)
@@ -276,26 +276,26 @@ fig2_supra_vanc <- stack_T2 %>%
 
 # Compute counts and proportions
 fig2_supra_vanc <- fig2_supra_vanc %>%
-  count(supra_NTMX_pre, initial_aki_stage) %>%
+  count(supra_NTMX_pre, initial_aki_stage_2cat) %>%
   group_by(supra_NTMX_pre) %>%
   mutate(percent = round(n / sum(n) * 100, 2))
 
 # Absolute frequency stacked bar chart with count labels
-p1 = ggplot(fig2_supra_vanc, aes(y = factor(supra_NTMX_pre), x = n, fill = initial_aki_stage)) +
+p1 = ggplot(fig2_supra_vanc, aes(y = factor(supra_NTMX_pre), x = n, fill = initial_aki_stage_2cat)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 4) +
+  geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 4, color = "white") +
   labs(y = "Supra NTMX Pre", x = "Count", fill = "AKI Stage") +
   ggtitle("Number of patients by exposure to sup levels of Vanc pre NINJA flag and stage of initial aki") +
-  theme_classic()
+  scale_fill_grey()
 
 # Relative frequency stacked bar chart with percentage labels
-p2 = ggplot(fig2_supra_vanc, aes(y = factor(supra_NTMX_pre), x = percent, fill = initial_aki_stage)) +
+p2 = ggplot(fig2_supra_vanc, aes(y = factor(supra_NTMX_pre), x = percent, fill = initial_aki_stage_2cat)) +
   geom_bar(stat = "identity", position = "fill") +
   geom_text(aes(label = paste0(percent, "%")), 
-            position = position_fill(vjust = 0.5), size = 4) +
+            position = position_fill(vjust = 0.5), size = 4, color = "white") +
   labs(y = "Supra NTMX Pre", x = "Proportion", fill = "AKI Stage") +
   ggtitle("Percent of patients by exposure to sup levels of Vanc pre NINJA flag and stage of initial aki") +
-  theme_classic()
+  scale_fill_grey()
 
 
 
@@ -305,26 +305,26 @@ fig2_supra_calc <- stack_T2 %>%
 
 # Compute counts and proportions
 fig2_supra_calc <- fig2_supra_calc %>%
-  count(supra_NTMX_pre, initial_aki_stage) %>%
+  count(supra_NTMX_pre, initial_aki_stage_2cat) %>%
   group_by(supra_NTMX_pre) %>%
   mutate(percent = round(n / sum(n) * 100, 2))
 
 # Absolute frequency stacked bar chart with count labels
-p3 = ggplot(fig2_supra_calc, aes(y = factor(supra_NTMX_pre), x = n, fill = initial_aki_stage)) +
+p3 = ggplot(fig2_supra_calc, aes(y = factor(supra_NTMX_pre), x = n, fill = initial_aki_stage_2cat)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 4) +
+  geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 4, color = "white") +
   labs(y = "Supra NTMX Pre", x = "Count", fill = "AKI Stage") +
   ggtitle("Number of patients by exposure to sup levels of Calc pre NINJA flag and stage of initial aki") +
-  theme_classic()
+  scale_fill_grey()
 
 # Relative frequency stacked bar chart with percentage labels
-p4 = ggplot(fig2_supra_calc, aes(y = factor(supra_NTMX_pre), x = percent, fill = initial_aki_stage)) +
+p4 = ggplot(fig2_supra_calc, aes(y = factor(supra_NTMX_pre), x = percent, fill = initial_aki_stage_2cat)) +
   geom_bar(stat = "identity", position = "fill") +
   geom_text(aes(label = paste0(percent, "%")), 
-            position = position_fill(vjust = 0.5), size = 4) +
+            position = position_fill(vjust = 0.5), size = 4, color = "white") +
   labs(y = "Supra NTMX Pre", x = "Proportion", fill = "AKI Stage") +
   ggtitle("Percent of patients by exposure to sup levels of Calc pre NINJA flag and stage of initial aki") +
-  theme_classic()
+  scale_fill_grey()
 
 
 ##################################################################################
@@ -341,12 +341,12 @@ custom_exposure_order <- c(
 )
 
 # Figure DF
-df_bar = df %>% select(record_id, initial_aki_stage, Vancomycin_exp, Zosyn_exp, Antivirals_exp, Contrast_exp, NSAID_ketorolac_exp, Calcineurin_inhibitors_exp)
+df_bar = df %>% select(record_id, initial_aki_stage_2cat, Vancomycin_exp, Zosyn_exp, Antivirals_exp, Contrast_exp, NSAID_ketorolac_exp, Calcineurin_inhibitors_exp)
 
 
 # Convert from wide to long format
 exposure_rf_stacked_df <- df_bar %>%
-  pivot_longer(cols = -c(record_id, initial_aki_stage), 
+  pivot_longer(cols = -c(record_id, initial_aki_stage_2cat), 
                names_to = "Exposure", 
                values_to = "Exposure_Status") %>%
   filter(Exposure_Status == "Yes")  # Keep only "Yes" exposures
@@ -354,16 +354,16 @@ exposure_rf_stacked_df <- df_bar %>%
 # Generate the stacked bar chart
 # Compute proportions within each exposure group
 exposure_rf_stacked_df_summary <- exposure_rf_stacked_df %>%
-  count(Exposure, initial_aki_stage) %>%
+  count(Exposure, initial_aki_stage_2cat) %>%
   group_by(Exposure) %>%
   mutate(prop = n / sum(n) * 100, label = sprintf("%.2f%%", prop))
 
 # Ensure factors are ordered for proper plotting
 exposure_rf_stacked_df_summary$Exposure <- factor(exposure_rf_stacked_df_summary$Exposure, levels = rev(custom_exposure_order))
-exposure_rf_stacked_df_summary$initial_aki_stage <- factor(exposure_rf_stacked_df_summary$initial_aki_stage, levels= c("Stage 1", "Stage 2", "Stage 3"), labels = c("Stage 1", "Stage 2", "Stage 3"))
+exposure_rf_stacked_df_summary$initial_aki_stage_2cat <- factor(exposure_rf_stacked_df_summary$initial_aki_stage_2cat, levels= c("Stage 1", "Stage 2 or 3"), labels = c("Stage 1", "Stage 2 or 3"))
 
 # Generate the horizontal stacked bar chart
-sb1 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = prop, fill = initial_aki_stage)) +
+sb1 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = prop, fill = initial_aki_stage_2cat)) +
   geom_col(position = "stack", width = 0.7) +  # Use geom_col() for precomputed values
   geom_text(aes(label = sprintf("%.1f%%", prop)), 
             position = position_stack(vjust = 0.5),  # Center labels
@@ -373,11 +373,11 @@ sb1 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = prop, fill = 
        x = "Percent of Row Frequency",
        y = "NTMx Exposure",
        fill = "Initial AKI Stage") +
-  theme_classic()
+  scale_fill_grey()
 
 
 # Generate frequency-based stacked bar chart
-sb2 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = initial_aki_stage)) +
+sb2 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = initial_aki_stage_2cat)) +
   geom_col(position = "stack", width = 0.7) +  # Stacked bars with raw counts
   geom_text(aes(label = n), 
             position = position_stack(vjust = 0.5),  # Center labels
@@ -386,8 +386,9 @@ sb2 = ggplot(exposure_rf_stacked_df_summary, aes(y = Exposure, x = n, fill = ini
        x = "Patient Count",
        y = "NTMx Exposure",
        fill = "Initial AKI Stage") +
-  theme_classic()
+  scale_fill_grey()
 
+sb2
 ##################################################################################
 
 ##################################################################################
@@ -500,22 +501,22 @@ vanc_long_df = left_join(vanc_long_df, data_d %>% select(record_id, initial_aki_
 # alluvial plot
 vanc_alluvial = ggplot(vanc_long_df,
        aes(x = tp, stratum = status, alluvium = record_id,
-           fill = status, label = status, y = freq)) +
+           fill = status, y = freq)) +
   geom_flow() + scale_x_continuous(breaks = -3:7)+ 
   geom_stratum(aes(fill = status)) +
-  geom_label(aes(fill = status),stat = "stratum", size = 3) +
+  geom_label(stat = "stratum",aes(fill = "white", label = after_stat(count)), size = 3) +
   theme(legend.position = "none") +
-  ggtitle("Vancomycin Exposure") + theme_classic()
+  ggtitle("Vancomycin Exposure") + scale_fill_grey()
 
-# vanc_alluvial
+vanc_alluvial
 # alluvial plot by iniitial aki stage
-vanc_alluvial2 = ggplot(vanc_long_df,
-       aes(x = tp, stratum = status, alluvium = record_id,
-           fill = initial_aki_stage_2cat, label = status, y = freq)) +
-  geom_flow() + scale_x_continuous(breaks = -3:7)+ 
-  geom_stratum(aes(fill = status)) +
-  geom_label(aes(fill = status),stat = "stratum", size = 3) +
-  ggtitle("Vancomycin Exposure by initial AKI stage") + theme_classic()
+# vanc_alluvial2 = ggplot(vanc_long_df,
+#        aes(x = tp, stratum = status, alluvium = record_id,
+#            fill = initial_aki_stage_2cat, label = status, y = freq)) +
+#   geom_flow() + scale_x_continuous(breaks = -3:7)+ 
+#   geom_stratum(aes(fill = status)) +
+#   geom_label(aes(fill = status),stat = "stratum", size = 3) +
+#   ggtitle("Vancomycin Exposure by initial AKI stage") + scale_fill_grey()
 
 # table
 vanc_exp_t = vanc_long_df %>% group_by(tp,status) %>% summarise(freq = n(),
@@ -543,7 +544,7 @@ kbl(tab3Mat_overall, booktabs = T) %>% kable_classic()%>% kable_styling("striped
 p1;p2;p3;p4
 
 # Alluvials
-vanc_alluvial;vanc_alluvial2
+vanc_alluvial #;vanc_alluvial2
 kbl(vanc_exp_t, booktabs = T) %>% kable_classic() %>% kable_styling("striped")
 ```
 
@@ -569,5 +570,5 @@ write.csv(tab2Mat_vanc, file ="table2_vanc.csv")
 write.csv(tab1Mat_overall, file ="table1_overall.csv")
 
 ggsave("alluvial_vanc.png", plot = vanc_alluvial, width = 12, height = 6, dpi = 300)
-ggsave("alluvial_vanc_stage.png", plot = vanc_alluvial2, width = 12, height = 6, dpi = 300)
+#ggsave("alluvial_vanc_stage.png", plot = vanc_alluvial2, width = 12, height = 6, dpi = 300)
 ```
