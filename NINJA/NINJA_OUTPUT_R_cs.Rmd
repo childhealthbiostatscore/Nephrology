@@ -504,9 +504,8 @@ vanc_alluvial = ggplot(vanc_long_df,
            fill = status, y = freq)) +
   geom_flow() + scale_x_continuous(breaks = -3:7)+ 
   geom_stratum(aes(fill = status)) +
-  geom_label(stat = "stratum",aes(fill = "white", label = after_stat(count)), size = 3) +
-  theme(legend.position = "none") +
-  ggtitle("Vancomycin Exposure") + scale_fill_grey()
+  geom_label(stat = "stratum",aes( label = after_stat(count)),fill = "white", size = 3) + 
+  ggtitle("Vancomycin Exposure") + scale_fill_grey() + guides(label="none")
 
 vanc_alluvial
 # alluvial plot by iniitial aki stage
