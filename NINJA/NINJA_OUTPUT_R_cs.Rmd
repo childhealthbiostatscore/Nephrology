@@ -508,7 +508,7 @@ vanc_alluvial = ggplot(vanc_long_df,
   ggtitle("Vancomycin Exposure") + scale_fill_grey() + guides(label="none")
 
 vanc_alluvial
-# alluvial plot by iniitial aki stage
+# alluvial plot by initial aki stage
 # vanc_alluvial2 = ggplot(vanc_long_df,
 #        aes(x = tp, stratum = status, alluvium = record_id,
 #            fill = initial_aki_stage_2cat, label = status, y = freq)) +
