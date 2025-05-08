@@ -525,3 +525,15 @@ IF (Stage2_flag) THEN STAGE = 2;
 IF (Stage3_flag) THEN STAGE = 3;
 
 - 
+```{r}
+# t1 with just aki atrat
+analysis_aki = left_join(labs_cr, analysis)
+
+t1_aki = table1(~ BaselineResultValue+Sex+ race + ethnicity + height_cm +weight_kg + bmi + BSA_sqm +
+                  AgeDays +Hospital + State + payorfinancialclass2  + AKICohortYN + CRRTCohortYN + AKILabYN +AKIDxYN + 
+                  DaysDOBtoEpicDeath + Death_YN + FLAG_died_admission + mortality_after_discharge|Stage,
+                data = analysis_aki)
+
+t1_aki
+
+```

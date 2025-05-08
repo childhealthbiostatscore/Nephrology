@@ -521,7 +521,154 @@ vanc_alluvial
 vanc_exp_t = vanc_long_df %>% group_by(tp,status) %>% summarise(freq = n(),
                                                     rf = freq/56)
 ##################################################################################
+# NSAID ALLUVIAL
+# Apply first_exposure_day function
+data_d$day_NSAID_exp <- mapply(first_exposure_day, data_d$ntmx_3_days_prior___27, data_d$ntmx_2_days_prior___27, 
+                                     data_d$ntmx_1_days_prior___27, data_d$ntmx_day_of___27, data_d$ntmx_day_of_1___27, 
+                                     data_d$ntmx_day_of_2___27, data_d$ntmx_day_of_3___27, data_d$ntmx_day_of_4___27, 
+                                     data_d$ntmx_day_of_5___27, data_d$ntmx_day_of_6___27, data_d$ntmx_day_of_7___27)
 
+# NSAID exposure df
+nsaid_exp_df = data_d %>% select(record_id, day_NSAID_exp, ntmx_3_days_prior___27,ntmx_2_days_prior___27, 
+                                     ntmx_1_days_prior___27, ntmx_day_of___27, ntmx_day_of_1___27, 
+                                     ntmx_day_of_2___27, ntmx_day_of_3___27, ntmx_day_of_4___27, 
+                                     ntmx_day_of_5___27, ntmx_day_of_6___27, ntmx_day_of_7___27) %>% filter(!is.na(day_NSAID_exp)) %>%
+  select(-day_NSAID_exp)
+
+# Reshape the dataset to long format
+nsaid_long_df <- nsaid_exp_df %>%
+  pivot_longer(cols = starts_with("ntmx"),
+               names_to = "timepoint",
+               values_to = "status")
+
+nsaid_long_df = nsaid_long_df %>% mutate(tp = case_when(timepoint == "ntmx_3_days_prior___27" ~ -3,
+                                                        timepoint == "ntmx_2_days_prior___27" ~ -2,
+                                                        timepoint == "ntmx_1_days_prior___27" ~ -1,
+                                                        timepoint == "ntmx_day_of___27" ~ 0,
+                                                        timepoint == "ntmx_day_of_1___27" ~ 1,
+                                                        timepoint == "ntmx_day_of_2___27" ~ 2,
+                                                        timepoint == "ntmx_day_of_3___27" ~ 3,
+                                                        timepoint == "ntmx_day_of_4___27" ~ 4,
+                                                        timepoint == "ntmx_day_of_5___27" ~ 5,
+                                                        timepoint == "ntmx_day_of_6___27" ~ 6,
+                                                        timepoint == "ntmx_day_of_7___27" ~ 7))
+
+order_df <- nsaid_long_df %>%
+  arrange(record_id, tp) %>%  # Ensure chronological order
+  mutate(first_letter = substr(status, 1, 1)) %>%  # Extract first letter
+  group_by(record_id) %>%
+  summarise(order = paste(first_letter, collapse = ""), .groups = "drop")
+
+nsaid_long_df = left_join(nsaid_long_df, order_df)
+nsaid_long_df$freq = 1
+
+nsaid_long_df = left_join(nsaid_long_df, data_d %>% select(record_id, initial_aki_stage, initial_aki_stage_2cat))
+
+# Alluvial plot
+nsaid_alluvial = ggplot(nsaid_long_df,
+                        aes(x = tp, stratum = status, alluvium = record_id,
+                            fill = status, y = freq)) +
+  geom_flow() + scale_x_continuous(breaks = -3:7)+ 
+  geom_stratum(aes(fill = status)) +
+  geom_label(stat = "stratum", aes(label = after_stat(count)), fill = "white", size = 3) + 
+  ggtitle("NSAID Exposure") + scale_fill_grey() + guides(label="none")
+
+nsaid_alluvial
+
+# Summary table
+nsaid_exp_t = nsaid_long_df %>%
+  group_by(tp, status) %>%
+  summarise(freq = n(), rf = freq / length(is.na(freq)))
+
+##################################################################################
+# NSAID + KET
+data_d$day_Ketorolac_exp <- mapply(first_exposure_day, data_d$ntmx_3_days_prior___47, data_d$ntmx_2_days_prior___47, 
+                                   data_d$ntmx_1_days_prior___47, data_d$ntmx_day_of___47, data_d$ntmx_day_of_1___47, 
+                                   data_d$ntmx_day_of_2___47, data_d$ntmx_day_of_3___47, data_d$ntmx_day_of_4___47, 
+                                   data_d$ntmx_day_of_5___47, data_d$ntmx_day_of_6___47, data_d$ntmx_day_of_7___47)
+
+combo_exp_df <- data_d %>% filter(NSAID_ketorolac_exp == "Yes") %>%
+  select(record_id,
+         # NSAID ___27
+         ntmx_3_days_prior___27, ntmx_2_days_prior___27, ntmx_1_days_prior___27, ntmx_day_of___27,
+         ntmx_day_of_1___27, ntmx_day_of_2___27, ntmx_day_of_3___27, ntmx_day_of_4___27,
+         ntmx_day_of_5___27, ntmx_day_of_6___27, ntmx_day_of_7___27,
+         # Ketorolac ___47
+         ntmx_3_days_prior___47, ntmx_2_days_prior___47, ntmx_1_days_prior___47, ntmx_day_of___47,
+         ntmx_day_of_1___47, ntmx_day_of_2___47, ntmx_day_of_3___47, ntmx_day_of_4___47,
+         ntmx_day_of_5___47, ntmx_day_of_6___47, ntmx_day_of_7___47) %>%
+  # Combine NSAID and Ketorolac columns into unified values:
+  mutate(across(-record_id, ~ . == "Checked")) %>%
+  rowwise() %>%
+  mutate(
+    ntmx_3 = any(ntmx_3_days_prior___27, ntmx_3_days_prior___47, na.rm = TRUE),
+    ntmx_2 = any(ntmx_2_days_prior___27, ntmx_2_days_prior___47, na.rm = TRUE),
+    ntmx_1 = any(ntmx_1_days_prior___27, ntmx_1_days_prior___47, na.rm = TRUE),
+    ntmx_0 = any(ntmx_day_of___27, ntmx_day_of___47, na.rm = TRUE),
+    ntmx_1d = any(ntmx_day_of_1___27, ntmx_day_of_1___47, na.rm = TRUE),
+    ntmx_2d = any(ntmx_day_of_2___27, ntmx_day_of_2___47, na.rm = TRUE),
+    ntmx_3d = any(ntmx_day_of_3___27, ntmx_day_of_3___47, na.rm = TRUE),
+    ntmx_4d = any(ntmx_day_of_4___27, ntmx_day_of_4___47, na.rm = TRUE),
+    ntmx_5d = any(ntmx_day_of_5___27, ntmx_day_of_5___47, na.rm = TRUE),
+    ntmx_6d = any(ntmx_day_of_6___27, ntmx_day_of_6___47, na.rm = TRUE),
+    ntmx_7d = any(ntmx_day_of_7___27, ntmx_day_of_7___47, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  select(record_id, starts_with("ntmx_")) %>%
+  mutate(across(starts_with("ntmx_"), ~ ifelse(. == TRUE, "Checked", "Unchecked")))
+
+
+# Step 2: Pivot to long format
+long_df <- combo_exp_df %>%
+  pivot_longer(cols = starts_with("ntmx_"),
+               names_to = "timepoint",
+               values_to = "status")
+
+# Step 3: Assign timepoint values
+long_df <- long_df %>%
+  mutate(tp = case_when(
+    timepoint == "ntmx_3" ~ -3,
+    timepoint == "ntmx_2" ~ -2,
+    timepoint == "ntmx_1" ~ -1,
+    timepoint == "ntmx_0" ~ 0,
+    timepoint == "ntmx_1d" ~ 1,
+    timepoint == "ntmx_2d" ~ 2,
+    timepoint == "ntmx_3d" ~ 3,
+    timepoint == "ntmx_4d" ~ 4,
+    timepoint == "ntmx_5d" ~ 5,
+    timepoint == "ntmx_6d" ~ 6,
+    timepoint == "ntmx_7d" ~ 7
+  ))
+
+
+long_df$freq <- 1
+long_df = long_df %>% filter(!is.na(tp))
+
+# Add AKI info if available
+if ("initial_aki_stage_2cat" %in% colnames(data_d)) {
+  long_df <- left_join(long_df, data_d %>% select(record_id, initial_aki_stage, initial_aki_stage_2cat))
+}
+
+# Step 5: Create the alluvial plot
+nsaid_ketorolac_alluvial <- ggplot(long_df,
+                                   aes(x = tp, stratum = status, alluvium = record_id,
+                                       fill = status, y = freq)) +
+  geom_flow() +
+  geom_stratum(aes(fill = status)) +
+  geom_label(stat = "stratum", aes(label = after_stat(count)), fill = "white", size = 3) +
+  scale_x_continuous(breaks = -3:7) +
+  ggtitle("NSAIDs or Ketorolac Exposure") +
+  scale_fill_grey(start = 0.3, end = 0.7) +
+  guides(label = "none")
+
+# Show plot
+nsaid_ketorolac_alluvial
+
+# Summary table
+nsaid_ket_exp_t = long_df %>%
+  group_by(tp, status) %>%
+  summarise(freq = n(), rf = freq / length(is.na(freq)))
+##################################################################################
 ##################################################################################
 ```
 
@@ -545,6 +692,14 @@ p1;p2;p3;p4
 # Alluvials
 vanc_alluvial #;vanc_alluvial2
 kbl(vanc_exp_t, booktabs = T) %>% kable_classic() %>% kable_styling("striped")
+
+# NSAID
+nsaid_alluvial #;vanc_alluvial2
+kbl(nsaid_exp_t, booktabs = T) %>% kable_classic() %>% kable_styling("striped")
+
+# NSAID + Ket
+nsaid_ketorolac_alluvial
+kbl(nsaid_ket_exp_t, booktabs = T) %>% kable_classic() %>% kable_styling("striped")
 ```
 
 ```{r, include=FALSE}
@@ -570,4 +725,8 @@ write.csv(tab1Mat_overall, file ="table1_overall.csv")
 
 ggsave("alluvial_vanc.png", plot = vanc_alluvial, width = 12, height = 6, dpi = 300)
 #ggsave("alluvial_vanc_stage.png", plot = vanc_alluvial2, width = 12, height = 6, dpi = 300)
+
+ggsave("alluvial_nsaid.png", plot = nsaid_alluvial, width = 12, height = 6, dpi = 300)
+ggsave("alluvial_NK.png", plot = nsaid_ketorolac_alluvial, width = 12, height = 6, dpi = 300)
+
 ```

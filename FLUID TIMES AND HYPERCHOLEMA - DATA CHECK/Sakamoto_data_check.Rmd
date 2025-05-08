@@ -1,0 +1,136 @@
+---
+title: "FTH Data Check"
+author: "SAKAMOTO"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 5
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(table1)
+# John analytic dataset
+df_John = read.csv("S:/Brinton/2020.09.29 Stenson - Fluid type and Hyperchloremia/Data/DataProcessed/p0001_all.csv")
+
+# kaci analytic dataset
+df_Kaci = read.csv("S:/Brinton/Stenson/Data/analytic_data.csv")
+```
+
+```{r, include=FALSE}
+# Sanity Check
+# basic setdiff, elements in Kaci's but not in Johns
+setdiff(df_Kaci$record_id,df_John$record_id) # record_id's 235, 237, 291 in KAci's set but not John's
+
+# elements in Johns not in Kaci's?
+setdiff(df_John$record_id,df_Kaci$record_id) # no ID's in John's not in Kaci's
+
+# lets see if N is same when accounting for these subjs
+test_kaci = df_Kaci %>% filter(record_id %in% c(235,237,291)) %>% select(record_id) # this accounts for 4 data points, 2 235, n not same
+
+
+# Get common column names
+cts_j = df_John %>% count(record_id)
+cts_k = df_Kaci %>% count(record_id)
+
+diffs <- full_join(cts_j, cts_k, by = "record_id", suffix = c("_j", "_k")) %>%
+  filter(is.na(n_j) | is.na(n_k) | n_j != n_k) %>% arrange(n_j)
+```
+
+# John/Samantha vs Kaci Dataset Differences
+
+```{r, results='asis'}
+print(diffs)
+```
+
+
+IDS 8,26,44,45,117,137,149,189,201,217,240,247 have 1 observation in Samantha/John's df, 2 in Kaci's
+
+IDS 193,207,238 have 2 observations in Samantha/Johns df, 1 in Kaci's
+
+IDS 235(2 obs), 237, 291 (1 ob ea) have 0 observations in Samantha/Johns df 
+
+# T1 Remake with Kaci's DF
+
+```{r}
+# John/Samantha's T1 Code
+tb1dat = df_John
+tb1dat$`Fluid_group` <- ifelse(tb1dat$`Fluid_group` == "Majority 0.9% NaCl", 1,
+  ifelse(tb1dat$`Fluid_group` == "Majority LR/Plasmalyte", 2, 3))
+tb1dat$`Fluid_group` <- factor(tb1dat$`Fluid_group`,
+    levels = c(1,2,3,4),
+    labels = c("Majority 0.9% NaCl", "Majority LR/Plasmalyte", "Mixed Fluids", "P-Value"))
+tb1dat$`Sex` <- factor(tb1dat$`Sex`,
+    levels = c(1,2),
+    labels = c("Female", "Male"))
+
+#tb1dat$`Site` <- ifelse(tb1dat$`Site` == "Cincinnati", 1, 2)
+#tb1dat$`Site` <- factor(tb1dat$`Site`,
+#  levels = c(1,2,3),
+#  labels = c("Cincinnati", "Colorado", "P-Value"))
+
+
+# Format table
+rndr <- function(x, name, ...) {
+    if (length(x) == 0) {
+        y <- tb1dat[[name]]
+        s <- rep("", length(render.default(x=y, name=name, ...)))
+        if (is.numeric(y)) {
+            p <- kruskal.test(y ~ tb1dat$`Fluid_group`)$p.value
+        } else {
+            p <- chisq.test(table(y, droplevels(tb1dat$`Fluid_group`)))$p.value
+        }
+        s[2] <- sub("<", "&lt;", format.pval(p, digits=3, eps=0.001))
+        s
+    } else {
+        render.default(x=x, name=name, ...)
+    }
+}
+
+
+# Format table
+# Will replace mean and STD with median and IQR
+my.render.cont <- function(x) {
+    with(stats.apply.rounding(stats.default(x), digits=2), c("",
+        "Median [25%, 75%]"=sprintf("%s [%s, %s]", 
+        MEDIAN, round(summary(x)[2],2), round(summary(x)[5],2))))
+}
+
+
+tb1 <- table1(~ `Baseline_Age` + `Sex` + `Baseline_Weight__kg_` +
+             `Baseline_Height__cm_` + `Baseline_Creatinine_num` + `Baseline_Creatinine_calc` + `PRISM_Score_num` + `comorbidities_cat` +
+             `PICU_LOS__Days_` + `Ventilation_Days` + `Site` + `total_fluid_perweight` + `mortality_cat`| `Fluid_group`,
+             data = tb1dat, droplevels = F, render = rndr, render.continuous = my.render.cont, 
+             overall = F)
+tb1
+# Now let's do this with Kaci's cols
+var_list <- c(
+  "Baseline_Age", 
+  "Sex", 
+  "Baseline_Weight__kg_", 
+  "Baseline_Height__cm_", 
+  "Baseline_Creatinine_num", 
+  "Baseline_Creatinine_calc", 
+  "PRISM_Score_num", 
+  "comorbidities_cat", 
+  "PICU_LOS__Days_", 
+  "Ventilation_Days", 
+  "Site", 
+  "total_fluid_perweight", 
+  "mortality_cat", 
+  "Fluid_group"
+)
+
+df_Kaci2 = df_Kaci %>% select(record_id, dob, admission_date, # baseline age)
+                              gender,weight,height,
+                              baselinecr,baselinecr2,
+                              PRISM, 
+                              comorbid_Cardiac:comorbid_Respiratory,
+                              los,vent_duration,bolus_fl_kg, # missing site and totalfluidperweight -- need to calculate?
+                              mortality, bolus_combo)
+```
